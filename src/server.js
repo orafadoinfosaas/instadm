@@ -14,6 +14,46 @@ const SESSION = crypto.createHmac('sha256', SECRET).update('session').digest('he
 
 const app = express();
 app.set('trust proxy', true);
+
+// --- Meta webhooks (public; registered before express.json so the raw body is kept for the signature) ---
+// Meta signs with the app secret from App settings → Basic; the Instagram app secret is also accepted
+const WEBHOOK_SECRETS = [process.env.META_APP_SECRET, process.env.INSTAGRAM_APP_SECRET].filter(Boolean);
+const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN
+  || crypto.createHmac('sha256', process.env.INSTAGRAM_APP_SECRET || SECRET).update('webhook-verify').digest('hex').slice(0, 24);
+let lastSignatureWarning = 0;
+
+app.get('/webhook', (req, res) => {
+  if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === VERIFY_TOKEN) {
+    log('info', 'Webhook verificado pela Meta');
+    return res.type('text/plain').send(String(req.query['hub.challenge'] ?? ''));
+  }
+  res.sendStatus(403);
+});
+
+app.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), (req, res) => {
+  const signature = Buffer.from(String(req.headers['x-hub-signature-256'] || ''));
+  const valid = Buffer.isBuffer(req.body) && WEBHOOK_SECRETS.some((secret) => {
+    const expected = Buffer.from(`sha256=${crypto.createHmac('sha256', secret).update(req.body).digest('hex')}`);
+    return signature.length === expected.length && crypto.timingSafeEqual(signature, expected);
+  });
+  if (!valid) {
+    if (Date.now() - lastSignatureWarning > 3600000) {
+      lastSignatureWarning = Date.now();
+      log('warn', 'Webhook com assinatura inválida — confira META_APP_SECRET (App settings → Basic → App secret)');
+    }
+    return res.sendStatus(401);
+  }
+  // Answer right away; the event only goes into the queue, which the worker sends
+  res.sendStatus(200);
+  let body;
+  try {
+    body = JSON.parse(req.body.toString('utf8'));
+  } catch {
+    return;
+  }
+  engine.handleWebhook(body).catch((err) => log('error', `Falha ao processar webhook: ${err.message}`));
+});
+
 app.use(express.json());
 
 // --- Single-password auth (APP_PASSWORD) ---
@@ -71,6 +111,8 @@ const publicAccount = (a, sent) => ({
   token_expires_at: a.token_expires_at,
   last_error: a.last_error,
   sent_last_hour: sent[a.id] || 0,
+  webhook_status: a.webhook_status,
+  last_webhook_at: a.last_webhook_at,
 });
 
 app.get('/api/state', wrap(async (req, res) => {
@@ -79,6 +121,7 @@ app.get('/api/state', wrap(async (req, res) => {
   res.json({
     accounts: accounts.map((a) => publicAccount(a, stats.sentLastHour)),
     redirectUri: redirectUri(req),
+    webhook: { url: `${baseUrl(req)}/webhook`, verifyToken: VERIFY_TOKEN, metaSecretConfigured: !!process.env.META_APP_SECRET },
     engine: engine.status,
     queue: { pending: stats.pending, failed24h: stats.failed24h, maxPerHour: stats.maxPerHour },
   });

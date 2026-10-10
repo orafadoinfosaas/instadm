@@ -64,7 +64,20 @@ export async function handleCallback(code, redirectUri) {
     [String(me.user_id || me.id), me.id ? String(me.id) : null, me.username, me.profile_picture_url || null, long.access_token, expiresAt, now]
   );
   log('info', `Conta @${acc.username} conectada`);
+  await subscribeWebhooks(acc);
   return acc;
+}
+
+// Asks Meta to send this account's comments and messages to our /webhook
+export async function subscribeWebhooks(acc) {
+  try {
+    await forToken(acc.token).subscribeWebhooks();
+    if (acc.webhook_status !== 'ok') log('info', `Webhook ativado para @${acc.username}`);
+    await run('UPDATE accounts SET webhook_status = $1 WHERE id = $2', ['ok', acc.id]);
+  } catch (err) {
+    if (acc.webhook_status !== err.message) log('warn', `Não foi possível ativar o webhook de @${acc.username}: ${err.message}`);
+    await run('UPDATE accounts SET webhook_status = $1 WHERE id = $2', [err.message, acc.id]);
+  }
 }
 
 export async function disconnect(accountId) {

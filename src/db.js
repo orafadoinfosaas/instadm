@@ -168,6 +168,8 @@ const UPGRADES = [
   'ALTER TABLE runs ADD COLUMN IF NOT EXISTS alt_id TEXT',
   'ALTER TABLE runs ADD COLUMN IF NOT EXISTS username TEXT',
   'DROP TABLE IF EXISTS pending',
+  'ALTER TABLE accounts ADD COLUMN IF NOT EXISTS webhook_status TEXT',
+  'ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_webhook_at BIGINT',
 ];
 
 async function migrateLegacyAccount() {

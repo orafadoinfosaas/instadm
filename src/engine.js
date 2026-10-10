@@ -1,9 +1,11 @@
 import { all, one, run, tx, log, cleanup } from './db.js';
 import { forToken } from './ig.js';
-import { refreshTokens } from './auth.js';
+import { refreshTokens, subscribeWebhooks } from './auth.js';
 
 const POLL_SECONDS = Number(process.env.POLL_SECONDS || 20);
-const MEDIA_LIMIT = Number(process.env.MEDIA_LIMIT || 12);
+const MEDIA_LIMIT = Number(process.env.MEDIA_LIMIT || 50);
+// Most recent posts are re-read every 5 min even if the comment count did not change
+const FORCE_RECENT = 12;
 // Per-account cap on first DMs only; the link message (requested by the user) never waits for it
 const MAX_SENDS_PER_HOUR = Number(process.env.MAX_SENDS_PER_HOUR || 120);
 const COOLDOWN_HOURS = Number(process.env.COOLDOWN_HOURS || 24);
@@ -54,25 +56,73 @@ async function enqueue(acc, item) {
 
 const myIdsOf = (acc) => new Set([acc.app_user_id, acc.ig_user_id].filter(Boolean).map(String));
 
+// Shared by polling and webhooks: decides whether a comment matches and enqueues it
+async function considerComment(acc, automations, c) {
+  const at = c.at;
+  if (myIdsOf(acc).has(String(c.fromId)) || (c.username && c.username === acc.username)) return;
+  const a = automations.find((x) => x.on_comments && (!x.media_id || x.media_id === c.mediaId) && at >= x.activated_at && matches(x, c.text));
+  if (!a) return;
+  await enqueue(acc, {
+    eventId: `comment:${c.id}`, kind: 'first', automationId: a.id, source: 'comment',
+    userId: c.fromId ? String(c.fromId) : null, username: c.username, commentId: c.id,
+    eventAt: at, deadline: at + 7 * DAY - 30 * MIN,
+  });
+}
+
+// Shared by polling and webhooks: button tap, story reply or keyword DM
+async function considerMessage(acc, automations, m) {
+  if (!m.fromId || myIdsOf(acc).has(String(m.fromId))) return;
+  const userId = String(m.fromId);
+  const { username, at } = m;
+  const text = m.text || '';
+  const linkEvent = `${acc.id}:link:${m.id}`;
+
+  // Button tap: the quick reply payload (webhook) or the button title as text (polling)
+  const w = await one('SELECT * FROM waiting WHERE account_id = $1 AND igsid = $2', [acc.id, userId]);
+  if (w) {
+    const a = await one('SELECT * FROM automations WHERE id = $1', [w.automation_id]);
+    if (a && (m.payload === `AUTO_${a.id}` || normalize(text) === normalize(a.button_title))) {
+      await tx(async (c) => {
+        await c.query(
+          `INSERT INTO queue (event_id, account_id, kind, automation_id, source, user_id, username, event_at, deadline, next_at, created_at)
+           VALUES ($1, $2, 'link', $3, 'click', $4, $5, $6, $7, $8, $8) ON CONFLICT (event_id) DO NOTHING`,
+          [linkEvent, acc.id, a.id, userId, username || null, at, at + DAY - 10 * MIN, Date.now()]
+        );
+        await c.query('DELETE FROM waiting WHERE account_id = $1 AND igsid = $2', [acc.id, userId]);
+      });
+      log('info', `[@${acc.username}] ${who(username, userId)} tocou no botão — link na fila`, a.id);
+      return;
+    }
+  }
+  if (await one('SELECT 1 AS x FROM queue WHERE event_id = $1', [linkEvent])) return;
+
+  const a = automations.find((x) => (m.isStoryReply ? x.on_stories : x.on_dms) && at >= x.activated_at && matches(x, text));
+  if (!a) return;
+  await enqueue(acc, {
+    eventId: `msg:${m.id}`, kind: 'first', automationId: a.id, source: m.isStoryReply ? 'story' : 'dm',
+    userId, username, eventAt: at, deadline: at + DAY - 10 * MIN,
+  });
+}
+
 async function pollComments(acc, api, automations) {
   const commentAutos = automations.filter((a) => a.on_comments);
   if (!commentAutos.length) return;
 
-  const myIds = myIdsOf(acc);
   const now = Date.now();
-  const media = (await api.listMedia(MEDIA_LIMIT)).data || [];
-  // Posts picked in an automation may be older than the recent ones listed
+  // One call returns the comment counts of the latest posts; only posts whose count changed are read
+  const media = (await api.listMediaCounts(MEDIA_LIMIT)).data || [];
+  // Posts picked in an automation may be older than the ones listed
   for (const id of new Set(commentAutos.map((a) => a.media_id).filter(Boolean))) {
     if (!media.some((m) => m.id === id)) media.push(await api.getMedia(id).catch(() => ({ id, comments_count: -1 })));
   }
 
-  for (const md of media) {
+  for (const [index, md] of media.entries()) {
     const relevant = commentAutos.filter((a) => !a.media_id || a.media_id === md.id);
     if (!relevant.length) continue;
 
     const cache = await one('SELECT * FROM media_cache WHERE media_id = $1', [md.id]);
-    // Only scan when the count changed, or every 5 min as a safety net
-    const force = !cache || now - cache.checked_at > 5 * MIN;
+    // Scan when the count changed; the most recent posts are also re-read every 5 min as a safety net
+    const force = !cache || (index < FORCE_RECENT && now - cache.checked_at > 5 * MIN);
     if (!force && cache.comments_count === md.comments_count) continue;
 
     const scanStart = Date.now();
@@ -99,14 +149,8 @@ async function pollComments(acc, api, automations) {
     found.sort((x, y) => Date.parse(x.timestamp) - Date.parse(y.timestamp));
     for (const c of found) {
       const at = Date.parse(c.timestamp);
-      if (at < stopBefore || myIds.has(String(c.from?.id)) || c.username === acc.username) continue;
-      const a = relevant.find((x) => at >= x.activated_at && matches(x, c.text));
-      if (!a) continue;
-      await enqueue(acc, {
-        eventId: `comment:${c.id}`, kind: 'first', automationId: a.id, source: 'comment',
-        userId: c.from?.id ? String(c.from.id) : null, username: c.username, commentId: c.id,
-        eventAt: at, deadline: at + 7 * DAY - 30 * MIN,
-      });
+      if (at < stopBefore) continue;
+      await considerComment(acc, relevant, { id: c.id, text: c.text, at, fromId: c.from?.id, username: c.username, mediaId: md.id });
     }
 
     await run(
@@ -121,7 +165,6 @@ async function pollConversations(acc, api, automations, hasWaiting) {
   const dmAutos = automations.filter((a) => a.on_dms || a.on_stories);
   if (!dmAutos.length && !hasWaiting) return;
 
-  const myIds = myIdsOf(acc);
   const now = Date.now();
   const stopBefore = Math.max((acc.conv_watermark || now - DAY) - OVERLAP, now - DAY);
 
@@ -140,41 +183,12 @@ async function pollConversations(acc, api, automations, hasWaiting) {
   }
 
   const fresh = messages
-    .filter((m) => m.from?.id && !myIds.has(String(m.from.id)) && Date.parse(m.created_time) >= stopBefore)
+    .filter((m) => Date.parse(m.created_time) >= stopBefore)
     .sort((x, y) => Date.parse(x.created_time) - Date.parse(y.created_time));
-
   for (const m of fresh) {
-    const userId = String(m.from.id);
-    const username = m.from.username;
-    const text = m.message || '';
-    const at = Date.parse(m.created_time);
-    const linkEvent = `${acc.id}:link:${m.id}`;
-
-    // Button tap (a quick reply arrives as a message with the button title)
-    const w = await one('SELECT * FROM waiting WHERE account_id = $1 AND igsid = $2', [acc.id, userId]);
-    if (w) {
-      const a = await one('SELECT * FROM automations WHERE id = $1', [w.automation_id]);
-      if (a && normalize(text) === normalize(a.button_title)) {
-        await tx(async (c) => {
-          await c.query(
-            `INSERT INTO queue (event_id, account_id, kind, automation_id, source, user_id, username, event_at, deadline, next_at, created_at)
-             VALUES ($1, $2, 'link', $3, 'click', $4, $5, $6, $7, $8, $8) ON CONFLICT (event_id) DO NOTHING`,
-            [linkEvent, acc.id, a.id, userId, username || null, at, at + DAY - 10 * MIN, Date.now()]
-          );
-          await c.query('DELETE FROM waiting WHERE account_id = $1 AND igsid = $2', [acc.id, userId]);
-        });
-        log('info', `[@${acc.username}] ${who(username, userId)} tocou no botão — link na fila`, a.id);
-        continue;
-      }
-    }
-    if (await one('SELECT 1 AS x FROM queue WHERE event_id = $1', [linkEvent])) continue;
-
-    const isStoryReply = !!m.story?.reply_to;
-    const a = dmAutos.find((x) => (isStoryReply ? x.on_stories : x.on_dms) && at >= x.activated_at && matches(x, text));
-    if (!a) continue;
-    await enqueue(acc, {
-      eventId: `msg:${m.id}`, kind: 'first', automationId: a.id, source: isStoryReply ? 'story' : 'dm',
-      userId, username, eventAt: at, deadline: at + DAY - 10 * MIN,
+    await considerMessage(acc, dmAutos, {
+      id: m.id, fromId: m.from?.id, username: m.from?.username, text: m.message,
+      at: Date.parse(m.created_time), isStoryReply: !!m.story?.reply_to,
     });
   }
 
@@ -189,6 +203,39 @@ async function pollAccount(acc) {
   const api = forToken(acc.token);
   await pollConversations(acc, api, automations, hasWaiting);
   await pollComments(acc, api, automations);
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks: Meta pushes comments and messages in real time (any post)
+// ---------------------------------------------------------------------------
+
+const toMs = (t) => (!t ? Date.now() : t < 1e12 ? t * 1000 : t);
+
+export async function handleWebhook(body) {
+  if (body?.object !== 'instagram') return;
+  for (const entry of body.entry || []) {
+    const acc = await one('SELECT * FROM accounts WHERE token IS NOT NULL AND (ig_user_id = $1 OR app_user_id = $1)', [String(entry.id)]);
+    if (!acc) continue;
+    await run('UPDATE accounts SET last_webhook_at = $1 WHERE id = $2', [Date.now(), acc.id]);
+    const automations = await all('SELECT * FROM automations WHERE active = true AND account_id = $1', [acc.id]);
+
+    for (const change of entry.changes || []) {
+      const v = change.value || {};
+      if (change.field !== 'comments' || !v.id) continue;
+      await considerComment(acc, automations, {
+        id: v.id, text: v.text, at: toMs(entry.time), fromId: v.from?.id, username: v.from?.username, mediaId: v.media?.id,
+      });
+    }
+
+    for (const ev of entry.messaging || []) {
+      const msg = ev.message;
+      if (!msg || msg.is_echo || msg.is_deleted) continue;
+      await considerMessage(acc, automations, {
+        id: msg.mid, fromId: ev.sender?.id, text: msg.text, payload: msg.quick_reply?.payload,
+        at: toMs(ev.timestamp), isStoryReply: !!msg.reply_to?.story,
+      });
+    }
+  }
 }
 
 const errorStreak = new Map();
@@ -212,6 +259,8 @@ async function pollLoop() {
   if (Date.now() - lastMaintenance > HOUR) {
     lastMaintenance = Date.now();
     await refreshTokens().catch(() => {});
+    // Re-subscribes every hour so a dropped subscription heals itself
+    for (const acc of await all('SELECT * FROM accounts WHERE token IS NOT NULL').catch(() => [])) await subscribeWebhooks(acc);
     cleanup().catch(() => {});
   }
   setTimeout(pollLoop, POLL_SECONDS * 1000);

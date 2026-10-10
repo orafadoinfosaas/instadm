@@ -35,6 +35,11 @@ export function forToken(token) {
     listMedia: (limit = 12) =>
       call('GET', '/me/media', { query: { fields: 'id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp,comments_count', limit } }),
 
+    listMediaCounts: (limit = 50) => call('GET', '/me/media', { query: { fields: 'id,timestamp,comments_count', limit } }),
+
+    // Subscribes this account to webhook events for our app
+    subscribeWebhooks: () => call('POST', '/me/subscribed_apps', { query: { subscribed_fields: 'comments,messages' } }),
+
     getMedia: (mediaId) => call('GET', `/${mediaId}`, { query: { fields: 'id,timestamp,comments_count' } }),
 
     // On API v3.2+ comments come newest first; top-level only (replies via the replies field)

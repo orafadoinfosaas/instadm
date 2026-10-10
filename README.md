@@ -17,7 +17,9 @@ Esse é o padrão anti-spam: o link só é enviado depois que a pessoa interage,
 - Você conecta **uma ou mais contas** pelo **login do Instagram** do seu próprio app na Meta, com o botão **Conectar conta**. A tela de login sempre aparece, para você escolher qual conta conectar. Cada token (válido por 60 dias) fica no Supabase e é **renovado sozinho** quando faltam menos de 15 dias.
 - Cada automação pertence a uma conta. Fila, limite por hora e histórico são separados por conta.
 - **Conta desconectada:** as automações dela pausam e os itens da fila esperam a reconexão, até o prazo da Meta.
-- O app verifica novos comentários e mensagens a cada 20s, direto na API do Instagram. Não há serviço intermediário nem cota.
+- **Detecção em dois caminhos, que alimentam a mesma fila** (sem duplicar envios):
+  - **Webhook:** a Meta avisa na hora sobre comentários e mensagens, em qualquer post. Cada conta é inscrita automaticamente, e o painel mostra o último evento recebido. A documentação da Meta diz que os eventos de **comentário** por webhook exigem Advanced Access; sem a revisão, eles podem não chegar.
+  - **Polling (rede de segurança):** a cada 20s, o app verifica os 50 posts mais recentes (só lê comentários dos posts cuja contagem mudou) e as conversas. Cobre o que o webhook não entregar, inclusive quando o app esteve fora do ar.
 
 ### Fila de envio (nenhum comentário fica sem resposta)
 
@@ -44,10 +46,11 @@ Outras proteções anti-spam: pausa aleatória de 1,5–5s antes de cada envio, 
    - Em **Set up Instagram business login → Business login settings → OAuth redirect URIs**, cadastre `https://SEU-DOMINIO/auth/callback`. O painel do InstaDM mostra a URL exata.
 4. Em **App roles → Roles → Add people → Instagram Tester**, adicione **as duas contas** (founder e produto) e aceite o convite em cada uma: instagram.com → Configurações → Apps e sites → Convites de testador. Enquanto o app não estiver em modo Live, só contas com papel no app conseguem conectar.
 5. Em **Use cases → Instagram API → Permissions and features**, confirme que estas três estão adicionadas: `instagram_business_basic`, `instagram_business_manage_comments` e `instagram_business_manage_messages`. Atenção: `instagram_manage_comments` é a versão do login do Facebook e não serve aqui.
-6. Em **App settings → Basic**, preencha o App Domains (só o domínio) e as URLs de privacidade, termos e exclusão de dados (`/privacy`, `/terms`, `/data-deletion`). Depois, em **Publish**, publique o app.
+6. **Webhook:** em **API setup with Instagram login → 3. Configure webhooks**, cole a **URL** e o **token de verificação** que aparecem no painel (seção Contas do Instagram), clique em **Verify and save** e assine os campos `comments` e `messages`. Copie o **App secret** de **App settings → Basic** para `META_APP_SECRET` no Easypanel.
+7. Em **App settings → Basic**, preencha o App Domains (só o domínio) e as URLs de privacidade, termos e exclusão de dados (`/privacy`, `/terms`, `/data-deletion`). Depois, em **Publish**, publique o app.
    - **Não precisa de App Review** para uso nas suas próprias contas. Testado em 10/10/2026: com o app publicado, comentários de contas sem nenhum papel no app dispararam o fluxo completo. Em modo Development (não publicado), a API esconde comentários e mensagens de quem não tem papel no app.
    - O roteiro em [docs/APP_REVIEW.md](docs/APP_REVIEW.md) fica como plano B, caso a Meta passe a exigir a revisão.
-7. Em **cada uma das contas**, no app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
+8. Em **cada uma das contas**, no app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
 
 ## Supabase
 
@@ -68,6 +71,7 @@ As tabelas são criadas automaticamente na primeira execução, com RLS ligado e
    INSTAGRAM_APP_SECRET=...
    DATABASE_URL=postgresql://postgres.xxxx:SENHA@aws-0-....pooler.supabase.com:5432/postgres
    APP_URL=https://instadm.seudominio.com
+   META_APP_SECRET=...
    LEGAL_OWNER=Seu nome
    LEGAL_EMAIL=seu@email.com
    ```
@@ -90,4 +94,4 @@ A versão local pode usar o mesmo Supabase do Easypanel: a fila evita envios dup
 - Botões do tipo *quick reply* **não aparecem no Instagram desktop**. Se o Instagram recusar o botão, o app manda a mensagem só em texto, pedindo para a pessoa responder com o texto do botão. O clique também é detectado se a pessoa digitar exatamente esse texto.
 - Palavra-chave no modo "contém" exige a palavra inteira: `ebook` casa com "quero o EBOOK!" e com "ébook", mas não com "ebooks". Acentos e maiúsculas são ignorados.
 - Respostas a comentários (threads) são verificadas nos comentários varridos. Uma resposta nova a um comentário muito antigo pode não ser vista.
-- O app monitora os 12 posts mais recentes (`MEDIA_LIMIT`), mais qualquer post escolhido especificamente numa automação.
+- O polling verifica os 50 posts mais recentes (`MEDIA_LIMIT`), mais os posts escolhidos nas automações. Posts mais antigos dependem do webhook.

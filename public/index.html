@@ -122,6 +122,7 @@
       </div>
       <div id="accounts"></div>
       <div class="hint" id="redirectHint"></div>
+      <div class="hint" id="webhookHint"></div>
     </section>
 
     <section class="card">
@@ -190,7 +191,8 @@
           <div class="hint">Maiúsculas e acentos são ignorados. "Contém" exige a palavra inteira: <b>ebook</b> casa com "quero o EBOOK!", mas não com "ebooks".</div>
           <div id="mediaWrap">
             <label>Post</label>
-            <select name="media_id"><option value="">Qualquer post recente</option></select>
+            <select name="media_id"><option value="">Qualquer post</option></select>
+            <div class="hint">"Qualquer post": os 50 posts mais recentes são verificados a cada 20s; posts mais antigos disparam na hora quando a Meta envia o evento por webhook.</div>
           </div>
           <div class="step-error"></div>
           <div class="step-next"><button type="button" class="next">Próximo</button></div>
@@ -287,6 +289,8 @@ async function loadState() {
   $('#engine').textContent = s.engine.lastRun ? `Última verificação: ${new Date(s.engine.lastRun).toLocaleTimeString('pt-BR')}` : '';
   $('#queueStats').textContent = `${s.queue.pending} na fila · ${s.queue.failed24h} falhas (24h) · limite de ${s.queue.maxPerHour} 1ªs DMs/hora por conta`;
   $('#redirectHint').innerHTML = `URL de redirecionamento para cadastrar no app da Meta: <span class="mono">${esc(s.redirectUri)}</span>`;
+  $('#webhookHint').innerHTML = `Webhook (passo 3 na Meta): URL <span class="mono">${esc(s.webhook.url)}</span> · token de verificação <span class="mono">${esc(s.webhook.verifyToken)}</span>`
+    + (s.webhook.metaSecretConfigured ? '' : ' · <span style="color:var(--warn)">defina META_APP_SECRET no Easypanel (App settings → Basic → App secret)</span>');
 
   $('#accounts').innerHTML = s.accounts.length ? s.accounts.map((a) => {
     const days = a.token_expires_at ? Math.round((a.token_expires_at - Date.now()) / 86400000) : null;
@@ -298,7 +302,7 @@ async function loadState() {
       ${a.profile_picture_url ? `<img class="avatar" src="${esc(a.profile_picture_url)}" alt="">` : '<div class="avatar"></div>'}
       <div class="grow">
         <div class="title">@${esc(a.username)} ${pill}</div>
-        <div class="muted">${a.connected ? `${a.sent_last_hour} 1ªs DMs na última hora` : 'Automações desta conta pausadas; a fila espera a reconexão.'}</div>
+        <div class="muted">${a.connected ? `${a.sent_last_hour} 1ªs DMs na última hora · ${webhookLabel(a)}` : 'Automações desta conta pausadas; a fila espera a reconexão.'}</div>
         ${a.last_error ? `<div class="err-text">${esc(a.last_error)}</div>` : ''}
       </div>
       <div class="item-actions">
@@ -316,6 +320,14 @@ async function loadState() {
   });
   $('#newBtn').disabled = !s.accounts.some((a) => a.connected);
   return s;
+}
+
+function webhookLabel(a) {
+  if (!a.webhook_status) return 'webhook: aguardando';
+  if (a.webhook_status !== 'ok') return `<span style="color:var(--warn)" title="${esc(a.webhook_status)}">webhook: erro ao ativar</span>`;
+  return a.last_webhook_at
+    ? `webhook: último evento ${new Date(a.last_webhook_at).toLocaleString('pt-BR')}`
+    : 'webhook ativo · nenhum evento recebido ainda';
 }
 
 async function connect() {
@@ -409,7 +421,7 @@ const STEP_RULES = {
   keyword: {
     error: () => (val('keywords') ? null : 'Adicione ao menos uma palavra-chave.'),
     summary: () => {
-      const post = form.on_comments.checked ? (form.media_id.value ? form.media_id.selectedOptions[0]?.textContent : 'Qualquer post recente') : '';
+      const post = form.on_comments.checked ? (form.media_id.value ? form.media_id.selectedOptions[0]?.textContent : 'Qualquer post') : '';
       return [val('keywords'), form.match_mode.value === 'exact' ? 'exata' : 'contém', post].filter(Boolean).join(' · ');
     },
   },
@@ -480,7 +492,7 @@ form.addEventListener('change', (e) => {
 
 async function loadMedia(accountId, selected = '') {
   const sel = form.media_id;
-  sel.innerHTML = '<option value="">Qualquer post recente</option>';
+  sel.innerHTML = '<option value="">Qualquer post</option>';
   if (accountId) {
     try {
       state.media[accountId] ??= await api(`/accounts/${accountId}/media`);
