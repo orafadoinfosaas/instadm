@@ -41,7 +41,7 @@ Outras proteções anti-spam: pausa aleatória de 1,5–5s antes de cada envio, 
    - Copie o **Instagram app ID** e o **Instagram app secret**: eles viram `INSTAGRAM_APP_ID` e `INSTAGRAM_APP_SECRET`.
    - Em **Set up Instagram business login → Business login settings → OAuth redirect URIs**, cadastre `https://SEU-DOMINIO/auth/callback`. O painel do InstaDM mostra a URL exata.
 4. Em **App roles → Roles**, confirme que sua conta do Instagram tem acesso. Se aparecer convite de testador, aceite no Instagram em Configurações → Apps e sites.
-5. Deixe o app em modo **Development**. Como só a sua conta usa, **não precisa de App Review**.
+5. Em modo **Development**, a API só mostra comentários e mensagens de contas com papel no app (admin/testador). Para funcionar com qualquer seguidor, é preciso a **revisão da Meta (Advanced Access)**: veja [docs/APP_REVIEW.md](docs/APP_REVIEW.md).
 6. No app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
 
 **Alternativa sem redirect:** na mesma tela de API setup, use **Generate access tokens** → adicione sua conta → copie o token. No painel do InstaDM, clique em **Colar token**.

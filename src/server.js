@@ -5,6 +5,7 @@ import { all, one, run, migrate, getSetting, setSetting, log } from './db.js';
 import * as auth from './auth.js';
 import * as ig from './ig.js';
 import * as engine from './engine.js';
+import { privacyPage, deletionPage, termsPage } from './legal.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const PASSWORD = process.env.APP_PASSWORD || '';
@@ -32,6 +33,11 @@ app.post('/api/login', (req, res) => {
   }
   res.status(401).json({ error: 'Senha incorreta' });
 });
+
+// Páginas públicas exigidas pela Meta
+app.get(['/privacy', '/privacidade'], (req, res) => res.type('html').send(privacyPage()));
+app.get(['/data-deletion', '/exclusao-de-dados'], (req, res) => res.type('html').send(deletionPage()));
+app.get(['/terms', '/termos'], (req, res) => res.type('html').send(termsPage()));
 
 app.use('/api', (req, res, next) => (isLogged(req) ? next() : res.status(401).json({ error: 'login' })));
 

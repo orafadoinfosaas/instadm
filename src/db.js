@@ -169,4 +169,5 @@ export async function cleanup() {
   await run('DELETE FROM pending WHERE at < $1', [Date.now() - day]);
   await run("DELETE FROM queue WHERE status <> 'pending' AND created_at < $1", [Date.now() - 30 * day]);
   await run('DELETE FROM logs WHERE at < $1', [Date.now() - 14 * day]);
+  await run('DELETE FROM runs WHERE at < $1', [Date.now() - 90 * day]);
 }
