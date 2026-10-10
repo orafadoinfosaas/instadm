@@ -1,6 +1,6 @@
 # InstaDM
 
-Microapp pessoal de automação de palavra-chave no Instagram (comentários, respostas de story e DM). Usa um app próprio na Meta (API do Instagram com login do Instagram), com dados no Supabase.
+Microapp pessoal e **não comercial** de automação de palavra-chave no Instagram (comentários, respostas de story e DM), para as suas próprias contas: por exemplo, a conta founder e a conta do produto. Usa um app próprio na Meta (API do Instagram com login do Instagram), com dados no Supabase. O painel é em inglês.
 
 **Fluxo do comentário:**
 1. A pessoa comenta a palavra-chave.
@@ -14,7 +14,9 @@ Esse é o padrão anti-spam: o link só é enviado depois que a pessoa interage,
 
 ## Como funciona
 
-- Você conecta a conta pelo **login do Instagram** do seu próprio app na Meta. O app guarda o token (válido por 60 dias) no Supabase e **renova sozinho** quando faltam menos de 15 dias.
+- Você conecta **uma ou mais contas** pelo **login do Instagram** do seu próprio app na Meta, com o botão **Connect account**. A tela de login sempre aparece, para você escolher qual conta conectar. Cada token (válido por 60 dias) fica no Supabase e é **renovado sozinho** quando faltam menos de 15 dias.
+- Cada automação pertence a uma conta. Fila, limite por hora e histórico são separados por conta.
+- **Conta desconectada:** as automações dela pausam e os itens da fila esperam a reconexão, até o prazo da Meta.
 - O app verifica novos comentários e mensagens a cada 20s, direto na API do Instagram. Não há serviço intermediário nem cota.
 
 ### Fila de envio (nenhum comentário fica sem resposta)
@@ -23,12 +25,12 @@ Todo comentário, resposta de story ou DM que bate com uma automação entra num
 
 - **Erro temporário** (instabilidade, limite da Meta): o envio é repetido em 30s, 2 min, 10 min, 30 min e depois de hora em hora, até o prazo.
 - **Prazos da Meta:** 7 dias após o comentário (resposta privada) e 24h após a mensagem ou o clique (DM).
-- **Limite por hora** (`MAX_SENDS_PER_HOUR`, padrão 120): vale só para a 1ª mensagem. O que passar disso **espera na fila**, não é descartado. A mensagem com o link nunca espera por esse limite, porque foi a pessoa que pediu.
+- **Limite por hora** (`MAX_SENDS_PER_HOUR`, padrão 120 por conta): vale só para a 1ª mensagem. O que passar disso **espera na fila**, não é descartado. A mensagem com o link nunca espera por esse limite, porque foi a pessoa que pediu.
 - **App fora do ar** (deploy, reinício): ao voltar, ele pagina os comentários e conversas desde a última verificação e coloca na fila o que chegou nesse meio-tempo.
 - **Sem duplicidade:** cada comentário ou mensagem gera um item único, e o envio é reservado com trava no banco. Mesmo duas instâncias rodando juntas não mandam mensagem em dobro.
-- **Falhas definitivas** (ex.: a pessoa bloqueou mensagens): aparecem em vermelho no painel, com o botão **Tentar de novo**.
+- **Falhas definitivas** (ex.: a pessoa bloqueou mensagens): aparecem em vermelho no painel, com o botão **Retry**.
 - **Resposta no comentário e DM são independentes:** se uma falhar temporariamente, a outra segue, e a que falhou é repetida até dar certo.
-- **Mesma pessoa repetindo a palavra-chave:** todo comentário recebe resposta no comentário, mas a DM só vai uma vez a cada 24h por pessoa e automação (`COOLDOWN_HOURS`). Isso aparece como "DM não repetida".
+- **Mesma pessoa repetindo a palavra-chave:** todo comentário recebe resposta no comentário, mas a DM só vai uma vez a cada 24h por pessoa e automação (`COOLDOWN_HOURS`). Isso aparece como "DM not repeated".
 - **Automação desativada:** os itens que já estavam na fila continuam sendo enviados.
 
 Outras proteções anti-spam: pausa aleatória de 1,5–5s antes de cada envio, e só são respondidos eventos posteriores à ativação da automação.
@@ -40,11 +42,9 @@ Outras proteções anti-spam: pausa aleatória de 1,5–5s antes de cada envio, 
 3. No painel do app: **Use cases → Instagram → Customize / API setup with Instagram login**.
    - Copie o **Instagram app ID** e o **Instagram app secret**: eles viram `INSTAGRAM_APP_ID` e `INSTAGRAM_APP_SECRET`.
    - Em **Set up Instagram business login → Business login settings → OAuth redirect URIs**, cadastre `https://SEU-DOMINIO/auth/callback`. O painel do InstaDM mostra a URL exata.
-4. Em **App roles → Roles**, confirme que sua conta do Instagram tem acesso. Se aparecer convite de testador, aceite no Instagram em Configurações → Apps e sites.
+4. Em **App roles → Roles → Add people → Instagram Tester**, adicione **as duas contas** (founder e produto) e aceite o convite em cada uma: instagram.com → Configurações → Apps e sites → Convites de testador. Enquanto o app não estiver em modo Live, só contas com papel no app conseguem conectar.
 5. Em modo **Development**, a API só mostra comentários e mensagens de contas com papel no app (admin/testador). Para funcionar com qualquer seguidor, é preciso a **revisão da Meta (Advanced Access)**: veja [docs/APP_REVIEW.md](docs/APP_REVIEW.md).
-6. No app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
-
-**Alternativa sem redirect:** na mesma tela de API setup, use **Generate access tokens** → adicione sua conta → copie o token. No painel do InstaDM, clique em **Colar token**.
+6. Em **cada uma das contas**, no app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
 
 ## Supabase
 
@@ -65,9 +65,11 @@ As tabelas são criadas automaticamente na primeira execução, com RLS ligado e
    INSTAGRAM_APP_SECRET=...
    DATABASE_URL=postgresql://postgres.xxxx:SENHA@aws-0-....pooler.supabase.com:5432/postgres
    APP_URL=https://instadm.seudominio.com
+   LEGAL_OWNER=Seu nome
+   LEGAL_EMAIL=seu@email.com
    ```
 4. **Domains**: aponte um domínio com HTTPS para a porta `3000`. Não precisa de volume, os dados ficam no Supabase.
-5. Abra o domínio nos dois PCs, entre com a senha e clique em **Entrar com Instagram** (conta Business ou Criador).
+5. Abra o domínio nos dois PCs, entre com a senha e clique em **Connect account** uma vez para cada conta (Business ou Criador).
 
 ## Rodar localmente
 

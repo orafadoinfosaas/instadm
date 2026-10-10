@@ -1,13 +1,14 @@
-import { getSetting, setSetting, log } from './db.js';
+import { all, one, run, log } from './db.js';
+import { forToken } from './ig.js';
 
-// Login com Instagram (Instagram API with Instagram Login), usando o app próprio na Meta
+// Instagram API with Instagram Login, using our own Meta app
 const APP_ID = process.env.INSTAGRAM_APP_ID;
 const APP_SECRET = process.env.INSTAGRAM_APP_SECRET;
 const SCOPES = ['instagram_business_basic', 'instagram_business_manage_messages', 'instagram_business_manage_comments'];
 const DAY = 24 * 3600 * 1000;
 
 function requireApp() {
-  if (!APP_ID || !APP_SECRET) throw new Error('INSTAGRAM_APP_ID e INSTAGRAM_APP_SECRET não configurados');
+  if (!APP_ID || !APP_SECRET) throw new Error('INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET are not set');
 }
 
 export function authorizeUrl(redirectUri, state) {
@@ -19,6 +20,8 @@ export function authorizeUrl(redirectUri, state) {
     scope: SCOPES.join(','),
     state,
     enable_fb_login: '0',
+    // Always show the login screen so a different account can be picked
+    force_reauth: 'true',
   });
   return `https://www.instagram.com/oauth/authorize?${qs}`;
 }
@@ -32,22 +35,7 @@ async function getJson(res) {
   return data;
 }
 
-async function exchangeLongLived(shortToken) {
-  requireApp();
-  const qs = new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: APP_SECRET, access_token: shortToken });
-  return getJson(await fetch(`https://graph.instagram.com/access_token?${qs}`));
-}
-
-async function saveToken({ access_token, expires_in }) {
-  if (!access_token) throw new Error('Resposta da Meta sem access_token');
-  const now = Date.now();
-  await setSetting('ig_token', access_token);
-  await setSetting('ig_token_expires_at', now + (Number(expires_in) || 60 * 24 * 3600) * 1000);
-  await setSetting('ig_token_refreshed_at', now);
-  tokenCache.at = 0;
-}
-
-// Troca o "code" do OAuth por um token de 60 dias
+// Exchanges the OAuth code for a 60-day token and saves (or updates) the account
 export async function handleCallback(code, redirectUri) {
   requireApp();
   const body = new URLSearchParams({
@@ -57,52 +45,48 @@ export async function handleCallback(code, redirectUri) {
     redirect_uri: redirectUri,
     code: code.replace(/#_$/, ''),
   });
-  const data = await getJson(await fetch('https://api.instagram.com/oauth/access_token', { method: 'POST', body }));
-  const short = data.data?.[0] || data;
-  await saveToken(await exchangeLongLived(short.access_token));
+  const short = await getJson(await fetch('https://api.instagram.com/oauth/access_token', { method: 'POST', body }));
+  const shortToken = (short.data?.[0] || short).access_token;
+  const qs = new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: APP_SECRET, access_token: shortToken });
+  const long = await getJson(await fetch(`https://graph.instagram.com/access_token?${qs}`));
+  if (!long.access_token) throw new Error('Meta did not return an access token');
+
+  const me = await forToken(long.access_token).getMe();
+  const now = Date.now();
+  const expiresAt = now + (Number(long.expires_in) || 60 * 24 * 3600) * 1000;
+  const acc = await one(
+    `INSERT INTO accounts (ig_user_id, app_user_id, username, profile_picture_url, token, token_expires_at, token_refreshed_at, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+     ON CONFLICT (ig_user_id) DO UPDATE SET app_user_id = excluded.app_user_id, username = excluded.username,
+       profile_picture_url = excluded.profile_picture_url, token = excluded.token,
+       token_expires_at = excluded.token_expires_at, token_refreshed_at = excluded.token_refreshed_at, last_error = NULL
+     RETURNING *`,
+    [String(me.user_id || me.id), me.id ? String(me.id) : null, me.username, me.profile_picture_url || null, long.access_token, expiresAt, now]
+  );
+  log('info', `Account @${acc.username} connected`);
+  return acc;
 }
 
-// Token colado manualmente (gerado no painel da Meta): tenta converter para 60 dias, senão usa como está
-export async function saveManualToken(token) {
-  token = String(token || '').trim();
-  if (!token) throw new Error('Token vazio');
-  try {
-    await saveToken(await exchangeLongLived(token));
-  } catch {
-    await saveToken({ access_token: token, expires_in: 60 * 24 * 3600 });
-  }
+export async function disconnect(accountId) {
+  const acc = await one('UPDATE accounts SET token = NULL, token_expires_at = NULL WHERE id = $1 RETURNING username', [accountId]);
+  if (acc) log('info', `Account @${acc.username} disconnected`);
 }
 
-export async function clearToken() {
-  for (const k of ['ig_token', 'ig_token_expires_at', 'ig_token_refreshed_at']) await setSetting(k, null);
-  tokenCache.at = 0;
-}
-
-const tokenCache = { token: null, at: 0 };
-export async function getToken() {
-  if (Date.now() - tokenCache.at < 60 * 1000) return tokenCache.token;
-  tokenCache.token = await getSetting('ig_token');
-  tokenCache.at = Date.now();
-  return tokenCache.token;
-}
-
-export async function tokenInfo() {
-  const expiresAt = Number(await getSetting('ig_token_expires_at')) || null;
-  return { connected: !!(await getToken()), expiresAt };
-}
-
-// Renova o token quando faltam menos de 15 dias (precisa ter mais de 24h e não estar vencido)
-export async function refreshIfNeeded() {
-  const token = await getToken();
-  if (!token) return;
-  const expiresAt = Number(await getSetting('ig_token_expires_at')) || 0;
-  const refreshedAt = Number(await getSetting('ig_token_refreshed_at')) || 0;
-  if (expiresAt - Date.now() > 15 * DAY || Date.now() - refreshedAt < DAY) return;
-  try {
-    const qs = new URLSearchParams({ grant_type: 'ig_refresh_token', access_token: token });
-    await saveToken(await getJson(await fetch(`https://graph.instagram.com/refresh_access_token?${qs}`)));
-    log('info', 'Token do Instagram renovado por mais 60 dias');
-  } catch (err) {
-    log('error', `Falha ao renovar o token do Instagram: ${err.message}`);
+// Refreshes tokens with less than 15 days left (must be over 24h old and not expired)
+export async function refreshTokens() {
+  const accounts = await all('SELECT * FROM accounts WHERE token IS NOT NULL');
+  for (const acc of accounts) {
+    if (acc.token_expires_at - Date.now() > 15 * DAY || Date.now() - acc.token_refreshed_at < DAY) continue;
+    try {
+      const qs = new URLSearchParams({ grant_type: 'ig_refresh_token', access_token: acc.token });
+      const data = await getJson(await fetch(`https://graph.instagram.com/refresh_access_token?${qs}`));
+      if (!data.access_token) throw new Error('Meta did not return an access token');
+      const now = Date.now();
+      await run('UPDATE accounts SET token = $1, token_expires_at = $2, token_refreshed_at = $3 WHERE id = $4',
+        [data.access_token, now + (Number(data.expires_in) || 60 * 24 * 3600) * 1000, now, acc.id]);
+      log('info', `Token for @${acc.username} renewed for 60 more days`);
+    } catch (err) {
+      log('error', `Could not renew the token for @${acc.username}: ${err.message}. Reconnect the account.`);
+    }
   }
 }
