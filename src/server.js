@@ -47,7 +47,18 @@ const wrap = (fn) => (req, res) =>
   Promise.resolve(fn(req, res)).catch((err) => res.status(err.status && err.status < 500 ? 400 : 500).json({ error: err.message }));
 
 // --- Instagram accounts (own Meta app) ---
-const baseUrl = (req) => (process.env.APP_URL || `${req.protocol}://${req.headers.host}`).replace(/\/+$/, '');
+// APP_URL must be the public address; an internal one (e.g. http://service_name:80) is ignored
+const APP_URL = (() => {
+  const raw = (process.env.APP_URL || '').trim().replace(/\/+$/, '');
+  if (!raw) return null;
+  try {
+    const { protocol, hostname } = new URL(raw);
+    if (protocol === 'https:' && hostname.includes('.') && !hostname.includes('_')) return raw;
+  } catch { /* invalid URL */ }
+  console.warn(`APP_URL "${raw}" is not a public https address — using the request host instead`);
+  return null;
+})();
+const baseUrl = (req) => APP_URL || `${req.protocol}://${req.headers.host}`;
 const redirectUri = (req) => `${baseUrl(req)}/auth/callback`;
 const oauthState = (hoursAgo = 0) =>
   crypto.createHmac('sha256', SECRET).update(`oauth:${Math.floor(Date.now() / 3600000) - hoursAgo}`).digest('hex').slice(0, 32);
