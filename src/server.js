@@ -197,6 +197,50 @@ app.post('/api/queue/:id/retry', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Diagnóstico: o que a API do Instagram devolve agora (sem expor o token)
+app.get('/api/debug', wrap(async (req, res) => {
+  const iso = (ms) => (ms ? new Date(Number(ms)).toISOString() : null);
+  const attempt = async (fn) => {
+    try {
+      return await fn();
+    } catch (err) {
+      return { error: err.message };
+    }
+  };
+  const token = await auth.tokenInfo();
+  const automations = (await all('SELECT * FROM automations ORDER BY id')).map((a) => ({
+    id: a.id, name: a.name, active: a.active, activated_at: iso(a.activated_at),
+    on_comments: a.on_comments, on_stories: a.on_stories, on_dms: a.on_dms, media_id: a.media_id, keywords: a.keywords,
+  }));
+  const media = await attempt(async () => {
+    const list = (await ig.listMedia(5)).data || [];
+    return Promise.all(list.map(async (m) => ({
+      id: m.id,
+      caption: (m.caption || '').slice(0, 50),
+      timestamp: m.timestamp,
+      comments_count: m.comments_count,
+      cache: await one('SELECT comments_count, checked_at FROM media_cache WHERE media_id = $1', [m.id]),
+      comments: await attempt(async () => ((await ig.listComments(m.id)).data || []).slice(0, 10)
+        .map((c) => ({ id: c.id, text: c.text, timestamp: c.timestamp, username: c.username, from: c.from }))),
+    })));
+  });
+  const conversations = await attempt(async () => ((await ig.listConversations()).data || []).slice(0, 5).map((c) => ({
+    updated_time: c.updated_time,
+    messages: (c.messages?.data || []).slice(0, 3).map((m) => ({ from: m.from?.username || m.from?.id, text: m.message, created_time: m.created_time })),
+  })));
+  res.json({
+    now: new Date().toISOString(),
+    token: { connected: token.connected, expiresAt: iso(token.expiresAt) },
+    me: await attempt(() => ig.getMe()),
+    engine: { ...engine.status, lastRun: iso(engine.status.lastRun) },
+    automations,
+    media,
+    conversations,
+    queue: await all('SELECT event_id, kind, status, attempts, last_error, username FROM queue ORDER BY id DESC LIMIT 10'),
+    logs: (await all('SELECT at, level, message FROM logs ORDER BY id DESC LIMIT 20')).map((l) => `${iso(l.at)} [${l.level}] ${l.message}`),
+  });
+}));
+
 app.get('/api/logs', wrap(async (req, res) => {
   res.json(await all('SELECT * FROM logs ORDER BY id DESC LIMIT 100'));
 }));

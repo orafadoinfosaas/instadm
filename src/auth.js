@@ -39,6 +39,7 @@ async function exchangeLongLived(shortToken) {
 }
 
 async function saveToken({ access_token, expires_in }) {
+  if (!access_token) throw new Error('Resposta da Meta sem access_token');
   const now = Date.now();
   await setSetting('ig_token', access_token);
   await setSetting('ig_token_expires_at', now + (Number(expires_in) || 60 * 24 * 3600) * 1000);
