@@ -47,7 +47,7 @@ const wrap = (fn) => (req, res) =>
   Promise.resolve(fn(req, res)).catch((err) => res.status(err.status && err.status < 500 ? 400 : 500).json({ error: err.message }));
 
 // --- Instagram accounts (own Meta app) ---
-const baseUrl = (req) => process.env.APP_URL || `${req.protocol}://${req.headers.host}`;
+const baseUrl = (req) => (process.env.APP_URL || `${req.protocol}://${req.headers.host}`).replace(/\/+$/, '');
 const redirectUri = (req) => `${baseUrl(req)}/auth/callback`;
 const oauthState = (hoursAgo = 0) =>
   crypto.createHmac('sha256', SECRET).update(`oauth:${Math.floor(Date.now() / 3600000) - hoursAgo}`).digest('hex').slice(0, 32);
