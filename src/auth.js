@@ -8,7 +8,7 @@ const SCOPES = ['instagram_business_basic', 'instagram_business_manage_messages'
 const DAY = 24 * 3600 * 1000;
 
 function requireApp() {
-  if (!APP_ID || !APP_SECRET) throw new Error('INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET are not set');
+  if (!APP_ID || !APP_SECRET) throw new Error('INSTAGRAM_APP_ID e INSTAGRAM_APP_SECRET não configurados');
 }
 
 export function authorizeUrl(redirectUri, state) {
@@ -49,7 +49,7 @@ export async function handleCallback(code, redirectUri) {
   const shortToken = (short.data?.[0] || short).access_token;
   const qs = new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: APP_SECRET, access_token: shortToken });
   const long = await getJson(await fetch(`https://graph.instagram.com/access_token?${qs}`));
-  if (!long.access_token) throw new Error('Meta did not return an access token');
+  if (!long.access_token) throw new Error('A Meta não devolveu o token de acesso');
 
   const me = await forToken(long.access_token).getMe();
   const now = Date.now();
@@ -63,13 +63,13 @@ export async function handleCallback(code, redirectUri) {
      RETURNING *`,
     [String(me.user_id || me.id), me.id ? String(me.id) : null, me.username, me.profile_picture_url || null, long.access_token, expiresAt, now]
   );
-  log('info', `Account @${acc.username} connected`);
+  log('info', `Conta @${acc.username} conectada`);
   return acc;
 }
 
 export async function disconnect(accountId) {
   const acc = await one('UPDATE accounts SET token = NULL, token_expires_at = NULL WHERE id = $1 RETURNING username', [accountId]);
-  if (acc) log('info', `Account @${acc.username} disconnected`);
+  if (acc) log('info', `Conta @${acc.username} desconectada`);
 }
 
 // Refreshes tokens with less than 15 days left (must be over 24h old and not expired)
@@ -80,13 +80,13 @@ export async function refreshTokens() {
     try {
       const qs = new URLSearchParams({ grant_type: 'ig_refresh_token', access_token: acc.token });
       const data = await getJson(await fetch(`https://graph.instagram.com/refresh_access_token?${qs}`));
-      if (!data.access_token) throw new Error('Meta did not return an access token');
+      if (!data.access_token) throw new Error('A Meta não devolveu o token de acesso');
       const now = Date.now();
       await run('UPDATE accounts SET token = $1, token_expires_at = $2, token_refreshed_at = $3 WHERE id = $4',
         [data.access_token, now + (Number(data.expires_in) || 60 * 24 * 3600) * 1000, now, acc.id]);
-      log('info', `Token for @${acc.username} renewed for 60 more days`);
+      log('info', `Token de @${acc.username} renovado por mais 60 dias`);
     } catch (err) {
-      log('error', `Could not renew the token for @${acc.username}: ${err.message}. Reconnect the account.`);
+      log('error', `Não foi possível renovar o token de @${acc.username}: ${err.message}. Reconecte a conta.`);
     }
   }
 }

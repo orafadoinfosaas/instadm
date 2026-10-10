@@ -33,7 +33,7 @@ export function matches(automation, text) {
   );
 }
 
-const who = (username, id) => (username ? `@${username}` : id || 'someone');
+const who = (username, id) => (username ? `@${username}` : id || 'alguém');
 
 // ---------------------------------------------------------------------------
 // Detection (polling): only enqueues, never sends directly
@@ -48,7 +48,7 @@ async function enqueue(acc, item) {
     [`${acc.id}:${item.eventId}`, acc.id, item.kind, item.automationId, item.source, item.userId || null,
       item.username || null, item.commentId || null, item.eventAt, item.deadline, now]
   );
-  if (inserted) log('info', `[@${acc.username}] ${who(item.username, item.userId)} (${item.source}) queued`, item.automationId);
+  if (inserted) log('info', `[@${acc.username}] ${who(item.username, item.userId)} (${item.source}) entrou na fila`, item.automationId);
   return !!inserted;
 }
 
@@ -163,7 +163,7 @@ async function pollConversations(acc, api, automations, hasWaiting) {
           );
           await c.query('DELETE FROM waiting WHERE account_id = $1 AND igsid = $2', [acc.id, userId]);
         });
-        log('info', `[@${acc.username}] ${who(username, userId)} tapped the button — link queued`, a.id);
+        log('info', `[@${acc.username}] ${who(username, userId)} tocou no botão — link na fila`, a.id);
         continue;
       }
     }
@@ -204,7 +204,7 @@ async function pollLoop() {
     } catch (err) {
       await run('UPDATE accounts SET last_error = $1 WHERE id = $2', [err.message, acc.id]).catch(() => {});
       const n = errorStreak.get(acc.id) || 0;
-      if (n % 10 === 0) log('error', `[@${acc.username}] Could not check Instagram: ${err.message}`);
+      if (n % 10 === 0) log('error', `[@${acc.username}] Falha ao verificar o Instagram: ${err.message}`);
       errorStreak.set(acc.id, n + 1);
     }
   }
@@ -227,7 +227,7 @@ function firstMessage(a) {
       text: a.msg1_text,
       quick_replies: [{ content_type: 'text', title: a.button_title.slice(0, 20), payload: `AUTO_${a.id}` }],
     },
-    fallback: { text: `${a.msg1_text}\n\nReply "${a.button_title}" to get it.` },
+    fallback: { text: `${a.msg1_text}\n\nResponda "${a.button_title}" para receber.` },
   };
 }
 
@@ -268,7 +268,7 @@ async function send(api, recipient, { message, fallback }) {
   } catch (err) {
     // Invalid parameter = Instagram rejected the button/quick reply; send a text-only version
     if (errInfo(err).code !== 100 || errInfo(err).error_subcode) throw err;
-    log('warn', `Button format rejected (${err.message}); sending text only`);
+    log('warn', `Formato com botão recusado (${err.message}); enviando só texto`);
     return await api.sendMessage(recipient, fallback);
   }
 }
@@ -321,14 +321,14 @@ async function postpone(item, ms, error) {
 async function processItem(item) {
   const person = who(item.username, item.user_id);
   if (Date.now() > item.deadline) {
-    await finish(item, 'failed', "Meta's reply deadline has passed");
-    return log('error', `Deadline passed — ${person} did not get the message`, item.automation_id);
+    await finish(item, 'failed', 'O prazo da Meta para responder venceu');
+    return log('error', `Prazo vencido — ${person} não recebeu a mensagem`, item.automation_id);
   }
   const a = await one('SELECT * FROM automations WHERE id = $1', [item.automation_id]);
-  if (!a) return finish(item, 'skipped', 'Automation deleted');
+  if (!a) return finish(item, 'skipped', 'Automação excluída');
   const acc = await one('SELECT * FROM accounts WHERE id = $1', [item.account_id]);
   // Disconnected account: keep the item waiting (it is sent once the account is reconnected)
-  if (!acc?.token) return postpone(item, 10 * MIN, 'Account disconnected — waiting for reconnection');
+  if (!acc?.token) return postpone(item, 10 * MIN, 'Conta desconectada — aguardando reconexão');
   const api = forToken(acc.token);
 
   try {
@@ -338,7 +338,7 @@ async function processItem(item) {
         await c.query("UPDATE queue SET status = 'done', done_at = $1, locked_until = 0, last_error = NULL WHERE id = $2", [Date.now(), item.id]);
         await c.query('UPDATE runs SET clicked = true WHERE id = (SELECT MAX(id) FROM runs WHERE automation_id = $1 AND user_id = $2)', [a.id, item.user_id]);
       });
-      return log('info', `[@${acc.username}] Link sent to ${person}`, a.id);
+      return log('info', `[@${acc.username}] Link enviado para ${person}`, a.id);
     }
 
     // Step 2: public reply to the comment ("check your DMs")
@@ -347,10 +347,10 @@ async function processItem(item) {
       try {
         await humanDelay();
         await api.replyToComment(item.comment_id, pickReply(a));
-        log('info', `[@${acc.username}] Replied to ${person}'s comment`, a.id);
+        log('info', `[@${acc.username}] Comentário de ${person} respondido`, a.id);
       } catch (err) {
         if (!isPermanent(err)) retryError = err;
-        else log('error', `[@${acc.username}] Could not reply to ${person}'s comment: ${err.message}`, a.id);
+        else log('error', `[@${acc.username}] Não foi possível responder o comentário de ${person}: ${err.message}`, a.id);
       }
       if (!retryError) {
         item.public_done = true;
@@ -368,8 +368,8 @@ async function processItem(item) {
         [a.id, Date.now() - COOLDOWN_HOURS * HOUR, item.user_id || '-', item.username || null]
       );
       if (recent) {
-        dmNote = `DM not repeated: already received in the last ${COOLDOWN_HOURS}h`;
-        log('info', `[@${acc.username}] ${person} already got this DM in the last ${COOLDOWN_HOURS}h — not repeated`, a.id);
+        dmNote = `DM não repetida: já recebeu nas últimas ${COOLDOWN_HOURS}h`;
+        log('info', `[@${acc.username}] ${person} já recebeu esta DM nas últimas ${COOLDOWN_HOURS}h — não repetida`, a.id);
       } else {
         try {
           const recipient = item.comment_id ? { comment_id: item.comment_id } : { id: item.user_id };
@@ -383,11 +383,11 @@ async function processItem(item) {
             await c.query(`INSERT INTO waiting (account_id, igsid, automation_id, at) VALUES ($1, $2, $3, $4)
               ON CONFLICT (account_id, igsid) DO UPDATE SET automation_id = excluded.automation_id, at = excluded.at`, [acc.id, igsid, a.id, now]);
           });
-          log('info', `[@${acc.username}] First DM sent to ${person} (${item.source})`, a.id);
+          log('info', `[@${acc.username}] 1ª DM enviada para ${person} (${item.source})`, a.id);
         } catch (err) {
           if (isPermanent(err)) {
-            dmNote = `DM failed: ${err.message}`;
-            log('error', `[@${acc.username}] Could not send the DM to ${person}: ${err.message}`, a.id);
+            dmNote = `DM falhou: ${err.message}`;
+            log('error', `[@${acc.username}] Não foi possível enviar a DM para ${person}: ${err.message}`, a.id);
           } else {
             dmFinished = false;
             retryError ??= err;
@@ -401,7 +401,7 @@ async function processItem(item) {
     }
 
     if (item.dm_done && (item.public_done || !item.comment_id)) {
-      const failed = dmNote?.startsWith('DM failed');
+      const failed = dmNote?.startsWith('DM falhou');
       const skipped = !item.comment_id && dmNote && !failed;
       return finish(item, failed ? 'failed' : skipped ? 'skipped' : 'done', dmNote);
     }
@@ -409,13 +409,13 @@ async function processItem(item) {
   } catch (err) {
     if (isPermanent(err)) {
       await finish(item, 'failed', err.message);
-      return log('error', `[@${acc.username}] Could not send to ${person}: ${err.message}`, a.id);
+      return log('error', `[@${acc.username}] Não foi possível enviar para ${person}: ${err.message}`, a.id);
     }
     const attempts = item.attempts + (isRateLimit(err) ? 0 : 1);
     const wait = isRateLimit(err) ? 10 * MIN : RETRY_STEPS[Math.min(attempts - 1, RETRY_STEPS.length - 1)];
     await run('UPDATE queue SET attempts = $1, next_at = $2, last_error = $3, locked_until = 0 WHERE id = $4',
       [attempts, Math.min(Date.now() + wait, item.deadline - MIN), err.message, item.id]);
-    if (attempts <= 1) log('warn', `[@${acc.username}] Sending to ${person} failed, will retry: ${err.message}`, a.id);
+    if (attempts <= 1) log('warn', `[@${acc.username}] Falha ao enviar para ${person}, vai tentar de novo: ${err.message}`, a.id);
   }
 }
 
@@ -440,7 +440,7 @@ export async function queueStats() {
 }
 
 export function start() {
-  log('info', `Engine started (checking every ${POLL_SECONDS}s, up to ${MAX_SENDS_PER_HOUR} first DMs/hour per account)`);
+  log('info', `Motor iniciado (verificação a cada ${POLL_SECONDS}s, até ${MAX_SENDS_PER_HOUR} 1ªs DMs/hora por conta)`);
   pollLoop();
   workerLoop();
 }

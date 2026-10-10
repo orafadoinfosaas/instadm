@@ -10,7 +10,7 @@ export class GraphError extends Error {
 }
 
 async function graph(token, method, path, { query = {}, body } = {}) {
-  if (!token) throw new Error('Account is not connected');
+  if (!token) throw new Error('Conta não conectada');
   const qs = new URLSearchParams(query);
   const res = await fetch(`${HOST}/${VERSION}${path}${qs.size ? `?${qs}` : ''}`, {
     method,

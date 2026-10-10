@@ -32,7 +32,7 @@ app.post('/api/login', (req, res) => {
     res.setHeader('Set-Cookie', `instadm=${SESSION}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 180}${secure}`);
     return res.json({ ok: true });
   }
-  res.status(401).json({ error: 'Wrong password' });
+  res.status(401).json({ error: 'Senha incorreta' });
 });
 
 // Public pages required by Meta
@@ -95,7 +95,7 @@ app.post('/api/accounts/:id/disconnect', wrap(async (req, res) => {
 
 async function connectedAccount(id) {
   const acc = await one('SELECT * FROM accounts WHERE id = $1', [id]);
-  if (!acc?.token) throw fail('Account is not connected');
+  if (!acc?.token) throw fail('Conta não conectada');
   return acc;
 }
 
@@ -108,8 +108,8 @@ app.get('/api/accounts/:id/media', wrap(async (req, res) => {
 const FIELDS = ['account_id', 'name', 'on_comments', 'on_stories', 'on_dms', 'keywords', 'match_mode', 'media_id', 'public_replies',
   'msg1_text', 'button_title', 'msg2_text', 'link_url', 'link_button_title'];
 const LABELS = {
-  name: 'Name', keywords: 'Keywords', msg1_text: 'First DM text', button_title: 'Button label',
-  msg2_text: 'Link message text', link_url: 'Link', link_button_title: 'Link button label',
+  name: 'Nome', keywords: 'Palavras-chave', msg1_text: 'Texto da 1ª mensagem', button_title: 'Texto do botão',
+  msg2_text: 'Texto da mensagem com link', link_url: 'Link', link_button_title: 'Texto do botão do link',
 };
 
 async function validate(body) {
@@ -118,17 +118,17 @@ async function validate(body) {
   for (const f of ['on_comments', 'on_stories', 'on_dms']) a[f] = !!a[f];
   a.match_mode = a.match_mode === 'exact' ? 'exact' : 'contains';
   a.media_id = a.media_id || null;
-  if (!a.account_id || !(await one('SELECT 1 AS x FROM accounts WHERE id = $1', [a.account_id]))) throw fail('Choose an Instagram account');
+  if (!a.account_id || !(await one('SELECT 1 AS x FROM accounts WHERE id = $1', [a.account_id]))) throw fail('Escolha a conta do Instagram');
   for (const f of Object.keys(LABELS)) {
     a[f] = String(a[f] || '').trim();
-    if (!a[f]) throw fail(`${LABELS[f]} is required`);
+    if (!a[f]) throw fail(`Campo obrigatório: ${LABELS[f]}`);
   }
-  if (!a.on_comments && !a.on_stories && !a.on_dms) throw fail('Choose at least one trigger');
+  if (!a.on_comments && !a.on_stories && !a.on_dms) throw fail('Escolha ao menos um gatilho');
   a.public_replies = [...new Set(String(a.public_replies || '').split('\n').map((l) => l.trim()).filter(Boolean))].join('\n') || null;
   const replies = a.public_replies ? a.public_replies.split('\n').length : 0;
-  if (a.on_comments && replies < 5) throw fail(`Add at least 5 different comment replies (you have ${replies})`);
-  if (a.button_title.length > 20) throw fail('The button label must be 20 characters or less');
-  if (!/^https?:\/\//i.test(a.link_url)) throw fail('The link must start with http:// or https://');
+  if (a.on_comments && replies < 5) throw fail(`Cadastre pelo menos 5 respostas diferentes para o comentário (tem ${replies})`);
+  if (a.button_title.length > 20) throw fail('O texto do botão deve ter até 20 caracteres');
+  if (!/^https?:\/\//i.test(a.link_url)) throw fail('O link deve começar com http:// ou https://');
   return a;
 }
 
@@ -169,11 +169,11 @@ app.put('/api/automations/:id', wrap(async (req, res) => {
 
 app.post('/api/automations/:id/toggle', wrap(async (req, res) => {
   const cur = await one('SELECT * FROM automations WHERE id = $1', [req.params.id]);
-  if (!cur) throw fail('Automation not found');
+  if (!cur) throw fail('Automação não encontrada');
   const active = !!req.body?.active;
   // activated_at prevents replying to comments/messages from before activation
   await run('UPDATE automations SET active = $1, activated_at = $2 WHERE id = $3', [active, active ? Date.now() : cur.activated_at, cur.id]);
-  log('info', `Automation "${cur.name}" ${active ? 'turned on' : 'turned off'}`, cur.id);
+  log('info', `Automação "${cur.name}" ${active ? 'ativada' : 'desativada'}`, cur.id);
   res.json(await getAutomation(cur.id));
 }));
 
@@ -247,10 +247,10 @@ app.get('/api/debug', wrap(async (req, res) => {
 // Return from Instagram login
 app.get('/auth/callback', async (req, res) => {
   const back = (msg) => res.redirect(`/?error=${encodeURIComponent(msg)}`);
-  if (!isLogged(req)) return back('Log in to the dashboard before connecting an account');
+  if (!isLogged(req)) return back('Entre no painel antes de conectar uma conta');
   if (req.query.error) return back(String(req.query.error_description || req.query.error));
   // Accepts this hour's or the previous hour's state (slow logins)
-  if (![0, 1].some((h) => req.query.state === oauthState(h))) return back('Login expired, please try again');
+  if (![0, 1].some((h) => req.query.state === oauthState(h))) return back('O login expirou, tente de novo');
   try {
     const acc = await auth.handleCallback(String(req.query.code || ''), redirectUri(req));
     res.redirect(`/?connected=${encodeURIComponent(acc.username)}`);

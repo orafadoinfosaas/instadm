@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -101,11 +101,11 @@
 <body>
 <main>
   <section id="login" class="card" hidden>
-    <h2 style="margin-bottom:12px">Sign in</h2>
+    <h2 style="margin-bottom:12px">Entrar</h2>
     <form id="loginForm">
-      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+      <input type="password" id="password" placeholder="Senha" autocomplete="current-password" required>
       <div class="err-text" id="loginErr" style="margin-top:8px"></div>
-      <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary">Sign in</button></div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary">Entrar</button></div>
     </form>
   </section>
 
@@ -117,8 +117,8 @@
 
     <section class="card">
       <div class="card-head">
-        <h2 class="grow">Instagram accounts</h2>
-        <button class="primary" id="connectBtn">+ Connect account</button>
+        <h2 class="grow">Contas do Instagram</h2>
+        <button class="primary" id="connectBtn">+ Conectar conta</button>
       </div>
       <div id="accounts"></div>
       <div class="hint" id="redirectHint"></div>
@@ -126,15 +126,15 @@
 
     <section class="card">
       <div class="card-head">
-        <h2 class="grow">Automations</h2>
-        <button class="primary" id="newBtn">+ New automation</button>
+        <h2 class="grow">Automações</h2>
+        <button class="primary" id="newBtn">+ Nova automação</button>
       </div>
       <div id="list"></div>
     </section>
 
     <section class="card">
       <div class="card-head">
-        <h2 class="grow">Send queue</h2>
+        <h2 class="grow">Fila de envio</h2>
       </div>
       <div class="card-sub" id="queueStats"></div>
       <div id="queue"></div>
@@ -142,8 +142,8 @@
 
     <section class="card">
       <div class="card-head">
-        <h2 class="grow">Activity</h2>
-        <button id="refreshBtn">Refresh</button>
+        <h2 class="grow">Atividade</h2>
+        <button id="refreshBtn">Atualizar</button>
       </div>
       <div class="logs" id="logs"></div>
     </section>
@@ -153,88 +153,88 @@
 <dialog id="editor">
   <form id="form" class="editor" novalidate>
     <div class="editor-head">
-      <h2 id="formTitle">New automation</h2>
-      <div class="muted">Keyword comment → reply on the comment → first DM with a button → link after the tap.</div>
+      <h2 id="formTitle">Nova automação</h2>
+      <div class="muted">Comentário com palavra-chave → resposta no comentário → 1ª DM com botão → link após o clique.</div>
     </div>
 
     <div class="editor-body">
       <div class="step" data-step="setup">
         <button type="button" class="step-head"><span class="step-num">1</span>
-          <span class="grow"><div class="step-title">Setup</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
+          <span class="grow"><div class="step-title">Configuração</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
         <div class="step-body">
-          <label>Name</label>
-          <input type="text" name="name" placeholder="e.g. Free ebook">
-          <label>Instagram account</label>
+          <label>Nome</label>
+          <input type="text" name="name" placeholder="Ex.: Ebook grátis">
+          <label>Conta do Instagram</label>
           <select name="account_id"></select>
-          <label>Triggers</label>
+          <label>Gatilhos</label>
           <div class="checks">
-            <label><input type="checkbox" name="on_comments" checked> Post comments</label>
-            <label><input type="checkbox" name="on_stories"> Story replies</label>
-            <label><input type="checkbox" name="on_dms"> Direct messages</label>
+            <label><input type="checkbox" name="on_comments" checked> Comentários em posts</label>
+            <label><input type="checkbox" name="on_stories"> Respostas de story</label>
+            <label><input type="checkbox" name="on_dms"> Mensagens diretas</label>
           </div>
           <div class="step-error"></div>
-          <div class="step-next"><button type="button" class="next">Next</button></div>
+          <div class="step-next"><button type="button" class="next">Próximo</button></div>
         </div>
       </div>
 
       <div class="step" data-step="keyword">
         <button type="button" class="step-head"><span class="step-num">2</span>
-          <span class="grow"><div class="step-title">Keyword</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
+          <span class="grow"><div class="step-title">Palavra-chave</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
         <div class="step-body">
-          <label>Keywords <span class="muted">(comma-separated)</span></label>
-          <input type="text" name="keywords" placeholder="EBOOK, guide">
+          <label>Palavras-chave <span class="muted">(separe por vírgula)</span></label>
+          <input type="text" name="keywords" placeholder="EBOOK, guia">
           <div class="checks" style="margin-top:10px">
-            <label><input type="radio" name="match_mode" value="contains" checked> Contains the word</label>
-            <label><input type="radio" name="match_mode" value="exact"> Exact message</label>
+            <label><input type="radio" name="match_mode" value="contains" checked> Contém a palavra</label>
+            <label><input type="radio" name="match_mode" value="exact"> Mensagem exata</label>
           </div>
-          <div class="hint">Case and accents are ignored. "Contains" matches whole words: <b>ebook</b> matches "I want the EBOOK!" but not "ebooks".</div>
+          <div class="hint">Maiúsculas e acentos são ignorados. "Contém" exige a palavra inteira: <b>ebook</b> casa com "quero o EBOOK!", mas não com "ebooks".</div>
           <div id="mediaWrap">
             <label>Post</label>
-            <select name="media_id"><option value="">Any recent post</option></select>
+            <select name="media_id"><option value="">Qualquer post recente</option></select>
           </div>
           <div class="step-error"></div>
-          <div class="step-next"><button type="button" class="next">Next</button></div>
+          <div class="step-next"><button type="button" class="next">Próximo</button></div>
         </div>
       </div>
 
       <div class="step" data-step="reply">
         <button type="button" class="step-head"><span class="step-num">3</span>
-          <span class="grow"><div class="step-title">Comment reply</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
+          <span class="grow"><div class="step-title">Resposta no comentário</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
         <div class="step-body">
-          <label>Replies <span class="muted">(one per line, at least 5)</span></label>
-          <textarea name="public_replies" rows="6" placeholder="Example:&#10;Just sent it to your DMs! 📩&#10;Check your inbox 😉&#10;Sent! Look at your DMs ✨&#10;It's in your DMs 👀&#10;Done — check your messages 🙌"></textarea>
+          <label>Respostas <span class="muted">(uma por linha, mínimo 5)</span></label>
+          <textarea name="public_replies" rows="6" placeholder="Exemplo:&#10;Te mandei no direct! 📩&#10;Confere a DM 😉&#10;Enviado, olha seu direct ✨&#10;Tá na sua DM 👀&#10;Pronto, confere as mensagens 🙌"></textarea>
           <div class="hint" id="repliesCount"></div>
-          <div class="hint">Each comment gets a random reply, never repeating the most recent ones.</div>
+          <div class="hint">Cada comentário recebe uma resposta sorteada, sem repetir as últimas usadas.</div>
           <div class="step-error"></div>
-          <div class="step-next"><button type="button" class="next">Next</button></div>
+          <div class="step-next"><button type="button" class="next">Próximo</button></div>
         </div>
       </div>
 
       <div class="step" data-step="dm1">
         <button type="button" class="step-head"><span class="step-num">4</span>
-          <span class="grow"><div class="step-title">First DM</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
+          <span class="grow"><div class="step-title">1ª mensagem na DM</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
         <div class="step-body">
-          <label>Message</label>
-          <textarea name="msg1_text" placeholder="Hey! Glad you want the ebook 😊 Tap the button below and I'll send you the link."></textarea>
-          <label>Button label <span class="muted">(CTA, up to 20 characters)</span></label>
-          <input type="text" name="button_title" maxlength="20" placeholder="Send me the link">
+          <label>Mensagem</label>
+          <textarea name="msg1_text" placeholder="Oi! Que bom que você quer o ebook 😊 Toque no botão abaixo que eu te envio o link."></textarea>
+          <label>Texto do botão <span class="muted">(CTA, até 20 caracteres)</span></label>
+          <input type="text" name="button_title" maxlength="20" placeholder="Quero o link">
           <div class="bubble" id="pv1"></div>
-          <div class="hint">The link is only sent after the person taps the button. Buttons show on the Instagram mobile app.</div>
+          <div class="hint">O link só é enviado depois que a pessoa toca no botão. O botão aparece no app do Instagram para celular.</div>
           <div class="step-error"></div>
-          <div class="step-next"><button type="button" class="next">Next</button></div>
+          <div class="step-next"><button type="button" class="next">Próximo</button></div>
         </div>
       </div>
 
       <div class="step" data-step="dm2">
         <button type="button" class="step-head"><span class="step-num">5</span>
-          <span class="grow"><div class="step-title">Link message</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
+          <span class="grow"><div class="step-title">Mensagem com link</div><div class="step-summary"></div></span><span class="chev">▾</span></button>
         <div class="step-body">
-          <label>Message</label>
-          <textarea name="msg2_text" placeholder="Here it is! 👇"></textarea>
+          <label>Mensagem</label>
+          <textarea name="msg2_text" placeholder="Aqui está! 👇"></textarea>
           <label>Link</label>
           <input type="url" name="link_url" placeholder="https://...">
-          <label>Link button label</label>
-          <input type="text" name="link_button_title" placeholder="Open">
+          <label>Texto do botão do link</label>
+          <input type="text" name="link_button_title" placeholder="Acessar">
           <div class="bubble" id="pv2"></div>
           <div class="step-error"></div>
         </div>
@@ -242,10 +242,10 @@
     </div>
 
     <div class="editor-foot">
-      <button type="button" class="danger" id="deleteBtn">Delete</button>
+      <button type="button" class="danger" id="deleteBtn">Excluir</button>
       <div class="err-text grow" id="formErr"></div>
-      <button type="button" id="cancelBtn">Cancel</button>
-      <button type="submit" class="primary">Save</button>
+      <button type="button" id="cancelBtn">Cancelar</button>
+      <button type="submit" class="primary">Salvar</button>
     </div>
   </form>
 </dialog>
@@ -263,7 +263,7 @@ async function api(path, opts = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && data.error === 'login') { showLogin(); throw new Error('login'); }
-  if (!res.ok) throw new Error(data.error || 'Something went wrong');
+  if (!res.ok) throw new Error(data.error || 'Algo deu errado');
   return data;
 }
 
@@ -284,33 +284,33 @@ let state = { accounts: [], automations: [], media: {} };
 async function loadState() {
   const s = await api('/state');
   state.accounts = s.accounts;
-  $('#engine').textContent = s.engine.lastRun ? `Last check: ${new Date(s.engine.lastRun).toLocaleTimeString()}` : '';
-  $('#queueStats').textContent = `${s.queue.pending} pending · ${s.queue.failed24h} failed (24h) · cap ${s.queue.maxPerHour} first DMs/hour per account`;
-  $('#redirectHint').innerHTML = `Redirect URI to register in the Meta app: <span class="mono">${esc(s.redirectUri)}</span>`;
+  $('#engine').textContent = s.engine.lastRun ? `Última verificação: ${new Date(s.engine.lastRun).toLocaleTimeString('pt-BR')}` : '';
+  $('#queueStats').textContent = `${s.queue.pending} na fila · ${s.queue.failed24h} falhas (24h) · limite de ${s.queue.maxPerHour} 1ªs DMs/hora por conta`;
+  $('#redirectHint').innerHTML = `URL de redirecionamento para cadastrar no app da Meta: <span class="mono">${esc(s.redirectUri)}</span>`;
 
   $('#accounts').innerHTML = s.accounts.length ? s.accounts.map((a) => {
     const days = a.token_expires_at ? Math.round((a.token_expires_at - Date.now()) / 86400000) : null;
-    const pill = !a.connected ? '<span class="pill fail">disconnected</span>'
-      : a.last_error ? '<span class="pill fail">error</span>'
-      : days !== null && days <= 15 ? `<span class="pill warn">token expires in ${days}d</span>`
-      : '<span class="pill on">active</span>';
+    const pill = !a.connected ? '<span class="pill fail">desconectada</span>'
+      : a.last_error ? '<span class="pill fail">erro</span>'
+      : days !== null && days <= 15 ? `<span class="pill warn">token vence em ${days} dia(s)</span>`
+      : '<span class="pill on">ativa</span>';
     return `<div class="list-item">
       ${a.profile_picture_url ? `<img class="avatar" src="${esc(a.profile_picture_url)}" alt="">` : '<div class="avatar"></div>'}
       <div class="grow">
         <div class="title">@${esc(a.username)} ${pill}</div>
-        <div class="muted">${a.connected ? `${a.sent_last_hour} first DMs in the last hour` : 'Automations for this account are paused; queued messages wait for reconnection.'}</div>
+        <div class="muted">${a.connected ? `${a.sent_last_hour} 1ªs DMs na última hora` : 'Automações desta conta pausadas; a fila espera a reconexão.'}</div>
         ${a.last_error ? `<div class="err-text">${esc(a.last_error)}</div>` : ''}
       </div>
       <div class="item-actions">
-        <button data-reconnect>${a.connected ? 'Reconnect' : 'Connect'}</button>
-        ${a.connected ? `<button class="danger" data-disconnect="${a.id}" data-name="${esc(a.username)}">Disconnect</button>` : ''}
+        <button data-reconnect>${a.connected ? 'Reconectar' : 'Conectar'}</button>
+        ${a.connected ? `<button class="danger" data-disconnect="${a.id}" data-name="${esc(a.username)}">Desconectar</button>` : ''}
       </div>
     </div>`;
-  }).join('') : '<div class="empty">No account connected yet. Click <b>Connect account</b> and log in with Instagram.</div>';
+  }).join('') : '<div class="empty">Nenhuma conta conectada. Clique em <b>Conectar conta</b> e entre com o Instagram.</div>';
 
   $$('[data-reconnect]').forEach((el) => el.onclick = connect);
   $$('[data-disconnect]').forEach((el) => el.onclick = async () => {
-    if (!confirm(`Disconnect @${el.dataset.name}? Its automations pause; queued messages wait for reconnection.`)) return;
+    if (!confirm(`Desconectar @${el.dataset.name}? As automações dela pausam e a fila espera a reconexão.`)) return;
     await api(`/accounts/${el.dataset.disconnect}/disconnect`, { method: 'POST' });
     refresh();
   });
@@ -327,22 +327,22 @@ async function connect() {
 $('#connectBtn').onclick = connect;
 
 // --- Automations list ---
-const triggersLabel = (a) => [a.on_comments && 'Comments', a.on_stories && 'Story replies', a.on_dms && 'DMs'].filter(Boolean).join(' · ');
+const triggersLabel = (a) => [a.on_comments && 'Comentários', a.on_stories && 'Stories', a.on_dms && 'DMs'].filter(Boolean).join(' · ');
 
 async function loadAutomations() {
   state.automations = await api('/automations');
   $('#list').innerHTML = state.automations.length ? state.automations.map((a) => `
     <div class="list-item">
-      <label class="switch" title="${a.active ? 'Turn off' : 'Turn on'}">
+      <label class="switch" title="${a.active ? 'Desativar' : 'Ativar'}">
         <input type="checkbox" data-toggle="${a.id}" ${a.active ? 'checked' : ''}><span></span>
       </label>
       <div class="grow">
         <div class="title">${esc(a.name)} <span class="muted">· @${esc(a.account_username || '?')}</span></div>
         <div class="muted"><span class="mono">${esc(a.keywords)}</span> · ${triggersLabel(a)}</div>
-        <div class="muted">${a.stats.sent} sent · ${a.stats.clicked} taps${a.stats.sent ? ` (${Math.round(a.stats.clicked / a.stats.sent * 100)}%)` : ''}${a.stats.queued ? ` · ${a.stats.queued} queued` : ''}</div>
+        <div class="muted">${a.stats.sent} disparos · ${a.stats.clicked} cliques${a.stats.sent ? ` (${Math.round(a.stats.clicked / a.stats.sent * 100)}%)` : ''}${a.stats.queued ? ` · ${a.stats.queued} na fila` : ''}</div>
       </div>
-      <button data-edit="${a.id}">Edit</button>
-    </div>`).join('') : '<div class="empty">No automations yet.</div>';
+      <button data-edit="${a.id}">Editar</button>
+    </div>`).join('') : '<div class="empty">Nenhuma automação ainda.</div>';
   $$('[data-toggle]').forEach((el) => el.onchange = async () => {
     try { await api(`/automations/${el.dataset.toggle}/toggle`, { method: 'POST', body: { active: el.checked } }); }
     catch (err) { alert(err.message); el.checked = !el.checked; }
@@ -352,25 +352,25 @@ async function loadAutomations() {
 }
 
 // --- Queue & logs ---
-const SOURCES = { comment: 'comment', story: 'story reply', dm: 'DM', click: 'button tap' };
+const SOURCES = { comment: 'comentário', story: 'story', dm: 'DM', click: 'clique' };
 const relTime = (ms) => {
   const m = Math.round((ms - Date.now()) / 60000);
-  if (m <= 0) return 'now';
-  return m < 60 ? `in ${m} min` : `in ${Math.round(m / 60)} h`;
+  if (m <= 0) return 'agora';
+  return m < 60 ? `em ${m} min` : `em ${Math.round(m / 60)} h`;
 };
 
 async function loadQueue() {
   const items = await api('/queue');
   $('#queue').innerHTML = items.length ? items.map((i) => `
     <div class="list-item">
-      <span class="pill ${i.status === 'failed' ? 'fail' : ''}">${i.status === 'failed' ? 'failed' : i.kind === 'link' ? 'link' : 'first DM'}</span>
+      <span class="pill ${i.status === 'failed' ? 'fail' : ''}">${i.status === 'failed' ? 'falhou' : i.kind === 'link' ? 'link' : '1ª DM'}</span>
       <div class="grow">
-        <div>${esc(i.username ? '@' + i.username : i.user_id || '—')} <span class="muted">· ${SOURCES[i.source] || i.source} · ${esc(i.automation_name || 'deleted automation')} · @${esc(i.account_username || '?')}</span></div>
-        ${i.status === 'pending' ? `<div class="muted">Sending ${relTime(i.next_at)}${i.attempts ? ` · ${i.attempts} attempt(s)` : ''}</div>` : ''}
+        <div>${esc(i.username ? '@' + i.username : i.user_id || '—')} <span class="muted">· ${SOURCES[i.source] || i.source} · ${esc(i.automation_name || 'automação excluída')} · @${esc(i.account_username || '?')}</span></div>
+        ${i.status === 'pending' ? `<div class="muted">Envio ${relTime(i.next_at)}${i.attempts ? ` · ${i.attempts} tentativa(s)` : ''}</div>` : ''}
         ${i.last_error ? `<div class="err-text">${esc(i.last_error)}</div>` : ''}
       </div>
-      ${i.status === 'failed' ? `<button data-retry="${i.id}">Retry</button>` : ''}
-    </div>`).join('') : '<div class="empty">Queue is empty — everything was sent.</div>';
+      ${i.status === 'failed' ? `<button data-retry="${i.id}">Tentar de novo</button>` : ''}
+    </div>`).join('') : '<div class="empty">Fila vazia — tudo enviado.</div>';
   $$('[data-retry]').forEach((el) => el.onclick = async () => {
     await api(`/queue/${el.dataset.retry}/retry`, { method: 'POST' });
     loadQueue();
@@ -379,8 +379,8 @@ async function loadQueue() {
 
 async function loadLogs() {
   const logs = await api('/logs');
-  $('#logs').innerHTML = logs.map((l) => `<div class="${l.level}">${new Date(l.at).toLocaleString()} — ${esc(l.message)}</div>`).join('')
-    || '<div class="empty">No activity yet.</div>';
+  $('#logs').innerHTML = logs.map((l) => `<div class="${l.level}">${new Date(l.at).toLocaleString('pt-BR')} — ${esc(l.message)}</div>`).join('')
+    || '<div class="empty">Sem atividade ainda.</div>';
 }
 
 async function refresh() { await loadState(); await Promise.all([loadAutomations(), loadQueue(), loadLogs()]); }
@@ -397,35 +397,35 @@ const replies = () => [...new Set(form.public_replies.value.split('\n').map((l) 
 // Each step: whether it applies, what is missing (null = complete) and a one-line summary
 const STEP_RULES = {
   setup: {
-    error: () => !val('name') ? 'Give the automation a name.'
-      : !val('account_id') ? 'Choose an Instagram account.'
-      : !(form.on_comments.checked || form.on_stories.checked || form.on_dms.checked) ? 'Choose at least one trigger.' : null,
+    error: () => !val('name') ? 'Dê um nome à automação.'
+      : !val('account_id') ? 'Escolha a conta do Instagram.'
+      : !(form.on_comments.checked || form.on_stories.checked || form.on_dms.checked) ? 'Escolha ao menos um gatilho.' : null,
     summary: () => {
       const acc = state.accounts.find((a) => String(a.id) === val('account_id'));
-      const t = [form.on_comments.checked && 'Comments', form.on_stories.checked && 'Story replies', form.on_dms.checked && 'DMs'].filter(Boolean).join(', ');
+      const t = [form.on_comments.checked && 'Comentários', form.on_stories.checked && 'Stories', form.on_dms.checked && 'DMs'].filter(Boolean).join(', ');
       return [val('name'), acc && '@' + acc.username, t].filter(Boolean).join(' · ');
     },
   },
   keyword: {
-    error: () => (val('keywords') ? null : 'Add at least one keyword.'),
+    error: () => (val('keywords') ? null : 'Adicione ao menos uma palavra-chave.'),
     summary: () => {
-      const post = form.on_comments.checked ? (form.media_id.value ? form.media_id.selectedOptions[0]?.textContent : 'Any recent post') : '';
-      return [val('keywords'), form.match_mode.value === 'exact' ? 'exact' : 'contains', post].filter(Boolean).join(' · ');
+      const post = form.on_comments.checked ? (form.media_id.value ? form.media_id.selectedOptions[0]?.textContent : 'Qualquer post recente') : '';
+      return [val('keywords'), form.match_mode.value === 'exact' ? 'exata' : 'contém', post].filter(Boolean).join(' · ');
     },
   },
   reply: {
     applies: () => form.on_comments.checked,
-    error: () => (replies().length >= 5 ? null : `Add at least 5 different replies (you have ${replies().length}).`),
-    summary: () => `${replies().length} replies`,
+    error: () => (replies().length >= 5 ? null : `Cadastre pelo menos 5 respostas diferentes (tem ${replies().length}).`),
+    summary: () => `${replies().length} respostas`,
   },
   dm1: {
-    error: () => !val('msg1_text') ? 'Write the first message.' : !val('button_title') ? 'Add a button label.' : null,
-    summary: () => (val('button_title') ? `Button: "${val('button_title')}"` : ''),
+    error: () => !val('msg1_text') ? 'Escreva a 1ª mensagem.' : !val('button_title') ? 'Defina o texto do botão.' : null,
+    summary: () => (val('button_title') ? `Botão: "${val('button_title')}"` : ''),
   },
   dm2: {
-    error: () => !val('msg2_text') ? 'Write the link message.'
-      : !/^https?:\/\//i.test(val('link_url')) ? 'Add a link starting with https://'
-      : !val('link_button_title') ? 'Add a label for the link button.' : null,
+    error: () => !val('msg2_text') ? 'Escreva a mensagem com o link.'
+      : !/^https?:\/\//i.test(val('link_url')) ? 'Informe um link começando com https://'
+      : !val('link_button_title') ? 'Defina o texto do botão do link.' : null,
     summary: () => { try { return new URL(val('link_url')).host; } catch { return ''; } },
   },
 };
@@ -448,9 +448,9 @@ function renderSteps() {
   $('#mediaWrap').hidden = !form.on_comments.checked;
   if (showErrors && !visibleSteps().some((s) => STEP_RULES[s.dataset.step].error())) $('#formErr').textContent = '';
   const count = replies().length;
-  $('#repliesCount').innerHTML = count >= 5 ? `<span style="color:var(--ok)">${count} different replies ✓</span>` : `${count}/5 different replies`;
-  $('#pv1').innerHTML = `${esc(val('msg1_text') || 'First message')}<br><span class="quick">${esc(val('button_title') || 'Button')}</span>`;
-  $('#pv2').innerHTML = `${esc(val('msg2_text') || 'Link message')}<span class="btn">${esc(val('link_button_title') || 'Open')}</span>`;
+  $('#repliesCount').innerHTML = count >= 5 ? `<span style="color:var(--ok)">${count} respostas diferentes ✓</span>` : `${count}/5 respostas diferentes`;
+  $('#pv1').innerHTML = `${esc(val('msg1_text') || '1ª mensagem')}<br><span class="quick">${esc(val('button_title') || 'Botão')}</span>`;
+  $('#pv2').innerHTML = `${esc(val('msg2_text') || 'Mensagem com link')}<span class="btn">${esc(val('link_button_title') || 'Acessar')}</span>`;
 }
 
 const visibleSteps = () => steps.filter((s) => !s.hidden);
@@ -480,15 +480,15 @@ form.addEventListener('change', (e) => {
 
 async function loadMedia(accountId, selected = '') {
   const sel = form.media_id;
-  sel.innerHTML = '<option value="">Any recent post</option>';
+  sel.innerHTML = '<option value="">Qualquer post recente</option>';
   if (accountId) {
     try {
       state.media[accountId] ??= await api(`/accounts/${accountId}/media`);
       for (const m of state.media[accountId]) {
-        const date = new Date(m.timestamp).toLocaleDateString();
+        const date = new Date(m.timestamp).toLocaleDateString('pt-BR');
         sel.add(new Option(`${date} · ${(m.caption || m.media_type).replace(/\s+/g, ' ').slice(0, 60)}`, m.id));
       }
-    } catch { /* the post list is optional */ }
+    } catch { /* a lista de posts é opcional */ }
   }
   if (selected && ![...sel.options].some((o) => o.value === selected)) sel.add(new Option(`Post ${selected}`, selected));
   sel.value = selected;
@@ -500,7 +500,7 @@ function openEditor(a) {
   showErrors = false;
   form.reset();
   $('#formErr').textContent = '';
-  $('#formTitle').textContent = a ? 'Edit automation' : 'New automation';
+  $('#formTitle').textContent = a ? 'Editar automação' : 'Nova automação';
   $('#deleteBtn').hidden = !a;
 
   const options = state.accounts.filter((x) => x.connected || x.id === a?.account_id);
@@ -529,7 +529,7 @@ form.onsubmit = async (e) => {
   const firstInvalid = visibleSteps().find((s) => STEP_RULES[s.dataset.step].error());
   if (firstInvalid) {
     steps.forEach((s) => s.classList.toggle('open', s === firstInvalid));
-    $('#formErr').textContent = 'Some steps need attention.';
+    $('#formErr').textContent = 'Algumas etapas precisam de atenção.';
     return;
   }
   const body = Object.fromEntries(new FormData(form));
@@ -543,7 +543,7 @@ form.onsubmit = async (e) => {
 };
 
 $('#deleteBtn').onclick = async () => {
-  if (!editing || !confirm(`Delete "${editing.name}"?`)) return;
+  if (!editing || !confirm(`Excluir "${editing.name}"?`)) return;
   await api(`/automations/${editing.id}`, { method: 'DELETE' });
   $('#editor').close();
   loadAutomations();
@@ -555,7 +555,7 @@ async function boot() {
     if (params.has('error') || params.has('connected')) history.replaceState(null, '', '/');
     await refresh();
     $('#app').hidden = false;
-    if (params.has('error')) alert(`Could not connect: ${params.get('error')}`);
+    if (params.has('error')) alert(`Não foi possível conectar: ${params.get('error')}`);
     setInterval(async () => { await loadState(); loadQueue(); loadLogs(); }, 15000);
   } catch (err) {
     if (err.message !== 'login') alert(err.message);
