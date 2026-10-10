@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InstaDM</title>
+<style>
+  :root {
+    --bg: #f6f6f8; --card: #fff; --text: #17171c; --muted: #6b6b76; --border: #e4e4ea;
+    --accent: #d62976; --accent-2: #962fbf; --ok: #1a8f4c; --err: #c62828; --warn: #b26a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111114; --card: #1b1b20; --text: #ededf2; --muted: #9a9aa6; --border: #2c2c34; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
+  .pill.on { color: var(--ok); border-color: var(--ok); }
+  .pill.warn { color: var(--warn); border-color: var(--warn); }
+  button { font: inherit; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+  button.primary { background: linear-gradient(90deg, var(--accent-2), var(--accent)); border: 0; color: #fff; }
+  button.danger { color: var(--err); }
+  button:disabled { opacity: .5; cursor: default; }
+  img.avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--border); }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+  input[type=text], input[type=url], input[type=password], textarea, select {
+    width: 100%; font: inherit; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  .checks { display: flex; gap: 18px; flex-wrap: wrap; }
+  .checks label { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; font-size: 14px; }
+  .switch { position: relative; width: 44px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: var(--border); border-radius: 99px; transition: .2s; cursor: pointer; }
+  .switch span::after { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + span { background: var(--ok); }
+  .switch input:checked + span::after { transform: translateX(20px); }
+  .auto-title { font-weight: 600; }
+  .kw { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .flow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .flow { grid-template-columns: 1fr; } }
+  .step { border: 1px dashed var(--border); border-radius: 10px; padding: 4px 12px 12px; }
+  .step h3 { font-size: 13px; margin: 10px 0 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .preview { margin-top: 10px; background: var(--bg); border-radius: 14px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
+  .preview .btn { display: block; margin-top: 8px; text-align: center; border: 1px solid var(--border); border-radius: 99px; padding: 6px; font-weight: 600; color: var(--accent); }
+  .logs { font-family: ui-monospace, Menlo, monospace; font-size: 12px; max-height: 280px; overflow: auto; }
+  .logs div { padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .logs .error { color: var(--err); } .logs .warn { color: var(--warn); }
+  .qitem { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .qitem:last-child { border-bottom: 0; }
+  .qitem .err { color: var(--err); font-size: 12px; overflow-wrap: anywhere; }
+  .pill.fail { color: var(--err); border-color: var(--err); }
+  dialog { border: 0; border-radius: 14px; padding: 0; width: min(760px, calc(100vw - 32px)); background: var(--card); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog form { padding: 20px; max-height: 85vh; overflow: auto; }
+  .actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 20px; }
+  .error-msg { color: var(--err); font-size: 13px; margin-top: 8px; }
+  #login { max-width: 360px; margin: 15vh auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <section id="login" class="card" hidden>
+    <h2>Entrar</h2>
+    <form id="loginForm">
+      <input type="password" id="password" placeholder="Senha" autocomplete="current-password" required>
+      <div class="error-msg" id="loginErr"></div>
+      <div class="actions"><span></span><button class="primary">Entrar</button></div>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <h1>InstaDM</h1>
+      <span id="engine" class="muted"></span>
+    </header>
+
+    <section class="card" id="accountCard"></section>
+
+    <section class="card">
+      <div class="row" style="margin-bottom:12px">
+        <h2 class="grow" style="margin:0">Automações</h2>
+        <button class="primary" id="newBtn">+ Nova automação</button>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="margin-bottom:8px">
+        <h2 class="grow" style="margin:0">Fila de envio</h2>
+        <span class="muted" id="queueStats"></span>
+      </div>
+      <div id="queue"></div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="margin-bottom:8px">
+        <h2 class="grow" style="margin:0">Atividade</h2>
+        <button id="refreshLogs">Atualizar</button>
+      </div>
+      <div class="logs" id="logs"></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="editor">
+  <form id="form" method="dialog">
+    <h2 id="formTitle">Nova automação</h2>
+    <label>Nome</label>
+    <input type="text" name="name" placeholder="Ex.: Ebook grátis" required>
+
+    <label>Gatilhos</label>
+    <div class="checks">
+      <label><input type="checkbox" name="on_comments" checked> Comentários</label>
+      <label><input type="checkbox" name="on_stories"> Respostas de story</label>
+      <label><input type="checkbox" name="on_dms"> DM direta</label>
+    </div>
+
+    <label>Passo 1 · Palavras-chave <span class="muted">(separe por vírgula)</span></label>
+    <input type="text" name="keywords" placeholder="EBOOK, quero" required>
+    <div class="checks" style="margin-top:8px">
+      <label><input type="radio" name="match_mode" value="contains" checked> Contém a palavra</label>
+      <label><input type="radio" name="match_mode" value="exact"> Mensagem exata</label>
+    </div>
+
+    <div id="mediaWrap">
+      <label>Post <span class="muted">(para comentários)</span></label>
+      <select name="media_id"><option value="">Qualquer post recente</option></select>
+    </div>
+
+    <div class="step" id="repliesWrap" style="margin-top:16px">
+      <h3>Passo 2 · Resposta no comentário</h3>
+      <label>Respostas <span class="muted">(uma por linha, mínimo 5 — o app sorteia sem repetir as últimas)</span></label>
+      <textarea name="public_replies" rows="6" placeholder="Te mandei no direct! 📩&#10;Enviado, confere a DM 😉&#10;Corre no direct que tá lá!&#10;Acabei de te mandar no privado ✨&#10;Olha sua DM 👀"></textarea>
+      <div class="muted" id="repliesCount"></div>
+    </div>
+
+    <div class="flow" style="margin-top:16px">
+      <div class="step">
+        <h3>Passo 3 · 1ª mensagem na DM</h3>
+        <label>Texto</label>
+        <textarea name="msg1_text" placeholder="Oi! Que bom que você quer o ebook 😊 Toque no botão abaixo que eu te envio o link." required></textarea>
+        <label>Texto do botão / CTA <span class="muted">(até 20 caracteres)</span></label>
+        <input type="text" name="button_title" maxlength="20" placeholder="Quero o link" required>
+        <div class="preview" id="pv1"></div>
+      </div>
+      <div class="step">
+        <h3>Passo 4 · Mensagem com link (após o clique)</h3>
+        <label>Texto</label>
+        <textarea name="msg2_text" placeholder="Aqui está! 👇" required></textarea>
+        <label>Link</label>
+        <input type="url" name="link_url" placeholder="https://..." required>
+        <label>Texto do botão do link</label>
+        <input type="text" name="link_button_title" placeholder="Acessar" required>
+        <div class="preview" id="pv2"></div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="formErr"></div>
+    <div class="actions">
+      <button type="button" class="danger" id="deleteBtn">Excluir</button>
+      <div class="row">
+        <button type="button" id="cancelBtn">Cancelar</button>
+        <button type="submit" class="primary">Salvar</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, {
+    method: opts.method || 'GET',
+    headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && data.error === 'login') { showLogin(); throw new Error('login'); }
+  if (!res.ok) throw new Error(data.error || 'Erro');
+  return data;
+}
+
+function showLogin() { $('#login').hidden = false; $('#app').hidden = true; }
+
+$('#loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api('/login', { method: 'POST', body: { password: $('#password').value } });
+    $('#login').hidden = true;
+    boot();
+  } catch (err) { $('#loginErr').textContent = err.message; }
+};
+
+let state = { automations: [], media: null, account: null };
+
+async function loadAccount() {
+  const acc = await api('/account');
+  state.account = acc;
+  const card = $('#accountCard');
+  const e = acc.engine || {};
+  $('#engine').textContent = e.lastRun ? `Última verificação: ${new Date(e.lastRun).toLocaleTimeString('pt-BR')}` : '';
+
+  if (!acc.connected) {
+    card.innerHTML = `<div class="row"><div class="grow"><h2 style="margin:0 0 4px">Conectar Instagram</h2>
+      <div class="muted">Conta Business ou Criador. URL de redirecionamento para cadastrar no app da Meta:<br>
+      <span class="kw">${esc(acc.redirectUri)}</span></div></div>
+      <button id="tokenBtn">Colar token</button>
+      <button class="primary" id="connectBtn">Entrar com Instagram</button></div>`;
+    $('#connectBtn').onclick = connect;
+    $('#tokenBtn').onclick = pasteToken;
+    return;
+  }
+  const p = acc.profile || {};
+  const days = acc.tokenExpiresAt ? Math.round((acc.tokenExpiresAt - Date.now()) / 86400000) : null;
+  const tokenLabel = days === null ? '' : days > 15
+    ? `<span class="pill on">ativo</span>`
+    : `<span class="pill warn" title="O app renova sozinho; se não conseguir, reconecte">token vence em ${days} dia(s)</span>`;
+  card.innerHTML = `<div class="row">
+      ${p.profile_picture_url ? `<img class="avatar" src="${esc(p.profile_picture_url)}" alt="">` : '<div class="avatar"></div>'}
+      <div class="grow"><div class="auto-title">@${esc(p.username || '—')} ${tokenLabel}</div>
+      <div class="muted">${acc.error ? `<span style="color:var(--err)">${esc(acc.error)}</span>` : e.lastError ? `<span style="color:var(--err)">${esc(e.lastError)}</span>` : 'Conectado'}</div></div>
+      <button id="reconnectBtn">Reconectar</button>
+      <button class="danger" id="disconnectBtn">Desconectar</button></div>`;
+  $('#reconnectBtn').onclick = connect;
+  $('#disconnectBtn').onclick = async () => {
+    if (!confirm('Desconectar a conta? As automações param de rodar (a fila fica guardada).')) return;
+    await api('/disconnect', { method: 'POST', body: {} });
+    loadAccount();
+  };
+}
+
+async function pasteToken() {
+  const token = prompt('Cole o token de acesso gerado no painel da Meta (Instagram → API setup → Generate token):');
+  if (!token) return;
+  try {
+    await api('/connect/token', { method: 'POST', body: { token } });
+    loadAccount();
+  } catch (err) { alert(err.message); }
+}
+
+async function connect() {
+  const { url } = await api('/connect', { method: 'POST' });
+  location.href = url;
+}
+
+function triggersLabel(a) {
+  return [a.on_comments && 'Comentários', a.on_stories && 'Stories', a.on_dms && 'DM'].filter(Boolean).join(' · ');
+}
+
+async function loadAutomations() {
+  state.automations = await api('/automations');
+  const list = $('#list');
+  if (!state.automations.length) {
+    list.innerHTML = '<div class="muted">Nenhuma automação ainda.</div>';
+    return;
+  }
+  list.innerHTML = state.automations.map((a) => `
+    <div class="card" style="margin:0 0 10px">
+      <div class="row">
+        <label class="switch" title="${a.active ? 'Desativar' : 'Ativar'}">
+          <input type="checkbox" data-toggle="${a.id}" ${a.active ? 'checked' : ''}><span></span>
+        </label>
+        <div class="grow">
+          <div class="auto-title">${esc(a.name)}</div>
+          <div class="muted"><span class="kw">${esc(a.keywords)}</span> · ${triggersLabel(a)}</div>
+          <div class="muted">${a.stats.sent} disparos · ${a.stats.clicked} cliques${a.stats.sent ? ` (${Math.round(a.stats.clicked / a.stats.sent * 100)}%)` : ''}${a.stats.queued ? ` · ${a.stats.queued} na fila` : ''}</div>
+        </div>
+        <button data-edit="${a.id}">Editar</button>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('[data-toggle]').forEach((el) => el.onchange = async () => {
+    try { await api(`/automations/${el.dataset.toggle}/toggle`, { method: 'POST', body: { active: el.checked } }); }
+    catch (err) { alert(err.message); el.checked = !el.checked; }
+    loadAutomations(); loadLogs();
+  });
+  list.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => openEditor(state.automations.find((a) => a.id == el.dataset.edit)));
+}
+
+const SOURCES = { comment: 'comentário', story: 'story', dm: 'DM', click: 'clique' };
+const relTime = (ms) => {
+  const m = Math.round((ms - Date.now()) / 60000);
+  if (m <= 0) return 'agora';
+  return m < 60 ? `em ${m} min` : `em ${Math.round(m / 60)} h`;
+};
+
+async function loadQueue() {
+  const q = state.account?.queue;
+  if (q) $('#queueStats').textContent = `${q.sentLastHour}/${q.maxPerHour} 1ªs mensagens na última hora`;
+  const items = await api('/queue');
+  $('#queue').innerHTML = items.length ? items.map((i) => `
+    <div class="qitem">
+      <span class="pill ${i.status === 'failed' ? 'fail' : ''}">${i.status === 'failed' ? 'falhou' : i.kind === 'link' ? 'link' : '1ª msg'}</span>
+      <div class="grow">
+        <div>${esc(i.username ? '@' + i.username : i.user_id || '—')} <span class="muted">· ${SOURCES[i.source] || i.source} · ${esc(i.automation_name || 'automação excluída')}</span></div>
+        ${i.status === 'pending'
+          ? `<div class="muted">Envio ${relTime(i.next_at)}${i.attempts ? ` · ${i.attempts} tentativa(s)` : ''}</div>`
+          : ''}
+        ${i.last_error ? `<div class="err">${esc(i.last_error)}</div>` : ''}
+      </div>
+      ${i.status === 'failed' ? `<button data-retry="${i.id}">Tentar de novo</button>` : ''}
+    </div>`).join('') : '<div class="muted">Fila vazia — tudo enviado.</div>';
+  $('#queue').querySelectorAll('[data-retry]').forEach((el) => el.onclick = async () => {
+    await api(`/queue/${el.dataset.retry}/retry`, { method: 'POST' });
+    loadQueue();
+  });
+}
+
+async function loadLogs() {
+  const logs = await api('/logs');
+  $('#logs').innerHTML = logs.map((l) =>
+    `<div class="${l.level}">${new Date(l.at).toLocaleString('pt-BR')} — ${esc(l.message)}</div>`).join('') || '<div class="muted">Sem atividade.</div>';
+}
+
+// --- Editor ---
+const form = $('#form');
+let editing = null;
+
+async function loadMedia() {
+  if (state.media || !state.account?.connected) return;
+  try {
+    state.media = await api('/media');
+    const sel = form.media_id;
+    for (const m of state.media) {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      const date = new Date(m.timestamp).toLocaleDateString('pt-BR');
+      opt.textContent = `${date} · ${(m.caption || m.media_type).slice(0, 60)}`;
+      sel.appendChild(opt);
+    }
+  } catch { /* lista de posts é opcional */ }
+}
+
+function openEditor(a) {
+  editing = a || null;
+  form.reset();
+  $('#formErr').textContent = '';
+  $('#formTitle').textContent = a ? 'Editar automação' : 'Nova automação';
+  $('#deleteBtn').hidden = !a;
+  if (a) {
+    for (const k of ['name', 'keywords', 'public_replies', 'msg1_text', 'button_title', 'msg2_text', 'link_url', 'link_button_title']) form[k].value = a[k] || '';
+    for (const k of ['on_comments', 'on_stories', 'on_dms']) form[k].checked = !!a[k];
+    form.match_mode.value = a.match_mode;
+  }
+  loadMedia().then(() => {
+    if (a?.media_id && ![...form.media_id.options].some((o) => o.value === a.media_id)) {
+      form.media_id.add(new Option(`Post ${a.media_id}`, a.media_id));
+    }
+    form.media_id.value = a?.media_id || '';
+  });
+  updatePreview();
+  $('#editor').showModal();
+}
+
+function updatePreview() {
+  $('#mediaWrap').hidden = !form.on_comments.checked;
+  $('#repliesWrap').hidden = !form.on_comments.checked;
+  const n = new Set(form.public_replies.value.split('\n').map((l) => l.trim()).filter(Boolean)).size;
+  $('#repliesCount').innerHTML = n >= 5 ? `${n} respostas diferentes ✓` : `<span style="color:var(--err)">${n}/5 respostas diferentes</span>`;
+  $('#pv1').innerHTML = `${esc(form.msg1_text.value || 'Texto da 1ª mensagem')}<span class="btn">${esc(form.button_title.value || 'Botão')}</span>`;
+  $('#pv2').innerHTML = `${esc(form.msg2_text.value || 'Texto da 2ª mensagem')}<span class="btn">${esc(form.link_button_title.value || 'Acessar')}</span>`;
+}
+form.addEventListener('input', updatePreview);
+
+$('#newBtn').onclick = () => openEditor(null);
+$('#cancelBtn').onclick = () => $('#editor').close();
+
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(form));
+  for (const k of ['on_comments', 'on_stories', 'on_dms']) body[k] = form[k].checked;
+  try {
+    if (editing) await api(`/automations/${editing.id}`, { method: 'PUT', body });
+    else await api('/automations', { method: 'POST', body });
+    $('#editor').close();
+    loadAutomations();
+  } catch (err) { $('#formErr').textContent = err.message; }
+};
+
+$('#deleteBtn').onclick = async () => {
+  if (!editing || !confirm(`Excluir "${editing.name}"?`)) return;
+  await api(`/automations/${editing.id}`, { method: 'DELETE' });
+  $('#editor').close();
+  loadAutomations();
+};
+
+$('#refreshLogs').onclick = () => { loadQueue(); loadLogs(); };
+
+async function boot() {
+  try {
+    const urlError = new URLSearchParams(location.search).get('error');
+    if (urlError) {
+      history.replaceState(null, '', '/');
+      alert(`Não foi possível conectar: ${urlError}`);
+    }
+    await loadAccount();
+    $('#app').hidden = false;
+    await Promise.all([loadAutomations(), loadQueue(), loadLogs()]);
+    setInterval(async () => { await loadAccount(); loadQueue(); loadLogs(); }, 15000);
+  } catch (err) {
+    if (err.message !== 'login') alert(err.message);
+  }
+}
+boot();
+</script>
+</body>
+</html>
