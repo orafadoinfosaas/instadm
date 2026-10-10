@@ -18,7 +18,7 @@ Esse é o padrão anti-spam: o link só é enviado depois que a pessoa interage,
 - Cada automação pertence a uma conta. Fila, limite por hora e histórico são separados por conta.
 - **Conta desconectada:** as automações dela pausam e os itens da fila esperam a reconexão, até o prazo da Meta.
 - **Detecção em dois caminhos, que alimentam a mesma fila** (sem duplicar envios):
-  - **Webhook:** a Meta avisa na hora sobre comentários e mensagens, em qualquer post. Cada conta é inscrita automaticamente, e o painel mostra o último evento recebido. A documentação da Meta diz que os eventos de **comentário** por webhook exigem Advanced Access; sem a revisão, eles podem não chegar.
+  - **Webhook:** a Meta avisa na hora sobre comentários e mensagens, em qualquer post. Cada conta é inscrita automaticamente, e o painel mostra o último evento recebido. A documentação da Meta diz que os eventos de **comentário** por webhook exigem Advanced Access, mas em 10/10/2026 eles chegaram sem a revisão, com o app publicado: um comentário num post de 27/06 foi respondido.
   - **Polling (rede de segurança):** a cada 20s, o app verifica os 50 posts mais recentes (só lê comentários dos posts cuja contagem mudou) e as conversas. Cobre o que o webhook não entregar, inclusive quando o app esteve fora do ar.
 
 ### Fila de envio (nenhum comentário fica sem resposta)
