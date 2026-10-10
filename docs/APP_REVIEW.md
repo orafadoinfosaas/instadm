@@ -1,5 +1,7 @@
 # Revisão do app na Meta (App Review)
 
+> **Status (10/10/2026): não foi necessária.** Com o app **publicado** (Live) e as três permissões `instagram_business_*` adicionadas, o fluxo funcionou com comentários de contas sem nenhum papel no app. Este guia fica como plano B, caso a Meta passe a exigir a revisão.
+
 Objetivo: obter **Advanced Access** para `instagram_business_basic`, `instagram_business_manage_comments` e `instagram_business_manage_messages`. Sem ele, a API só mostra comentários e mensagens de contas com papel no app.
 
 **Contexto para a revisão:** o app é **pessoal e não comercial**. Ele é usado só por você, nas suas duas contas profissionais (founder e produto). Não há clientes, planos nem acesso de terceiros. Os textos abaixo deixam isso explícito, porque ajuda o revisor a entender o escopo.

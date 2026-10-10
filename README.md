@@ -43,8 +43,11 @@ Outras proteções anti-spam: pausa aleatória de 1,5–5s antes de cada envio, 
    - Copie o **Instagram app ID** e o **Instagram app secret**: eles viram `INSTAGRAM_APP_ID` e `INSTAGRAM_APP_SECRET`.
    - Em **Set up Instagram business login → Business login settings → OAuth redirect URIs**, cadastre `https://SEU-DOMINIO/auth/callback`. O painel do InstaDM mostra a URL exata.
 4. Em **App roles → Roles → Add people → Instagram Tester**, adicione **as duas contas** (founder e produto) e aceite o convite em cada uma: instagram.com → Configurações → Apps e sites → Convites de testador. Enquanto o app não estiver em modo Live, só contas com papel no app conseguem conectar.
-5. Em modo **Development**, a API só mostra comentários e mensagens de contas com papel no app (admin/testador). Para funcionar com qualquer seguidor, é preciso a **revisão da Meta (Advanced Access)**: veja [docs/APP_REVIEW.md](docs/APP_REVIEW.md).
-6. Em **cada uma das contas**, no app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
+5. Em **Use cases → Instagram API → Permissions and features**, confirme que estas três estão adicionadas: `instagram_business_basic`, `instagram_business_manage_comments` e `instagram_business_manage_messages`. Atenção: `instagram_manage_comments` é a versão do login do Facebook e não serve aqui.
+6. Em **App settings → Basic**, preencha o App Domains (só o domínio) e as URLs de privacidade, termos e exclusão de dados (`/privacy`, `/terms`, `/data-deletion`). Depois, em **Publish**, publique o app.
+   - **Não precisa de App Review** para uso nas suas próprias contas. Testado em 10/10/2026: com o app publicado, comentários de contas sem nenhum papel no app dispararam o fluxo completo. Em modo Development (não publicado), a API esconde comentários e mensagens de quem não tem papel no app.
+   - O roteiro em [docs/APP_REVIEW.md](docs/APP_REVIEW.md) fica como plano B, caso a Meta passe a exigir a revisão.
+7. Em **cada uma das contas**, no app do Instagram: Configurações → Mensagens e respostas ao story → Controles de mensagens → Ferramentas conectadas → ative **Permitir acesso às mensagens**.
 
 ## Supabase
 
